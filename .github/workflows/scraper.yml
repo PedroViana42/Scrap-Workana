@@ -47,7 +47,10 @@ jobs:
         with:
           commit_message: "chore: update vagas database [skip ci]"
           file_pattern: 'vagas.db'
-          push_options: '--force' # Opcional, mas ajuda se houver conflitos persistentes
+          push_options: '--force' 
+          skip_fetch: false
+          skip_checkout: false
+          disable_globbing: true
 
       - name: Notify Failure
         if: failure()
