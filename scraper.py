@@ -27,17 +27,20 @@ CHAT_ID = os.getenv("CHAT_ID")
 GEMINI_KEY = os.getenv("GEMINI_KEY")
 DB_PATH = "vagas.db"
 
-PALAVRAS_REJEITADAS = [
-    "design", "logo", "logotipo", "tradução", "traduzir", "identidade visual", 
-    "banner", "flyer", "ilustração", "illustrator", "photoshop", "cana", "video", 
-    "edição", "redator", "copywriting", "social media", "vendas", "marketing"
+REJEICAO_ESTRITA = [
+    "tradução", "traduzir", "redator", "copywriting"
+]
+
+REJEICAO_SOFT = [
+    "design", "logo", "logotipo", "identidade visual", "banner", "flyer", 
+    "ilustração", "illustrator", "photoshop", "video", "edição"
 ]
 
 TECNOLOGIAS_ALVO = [
     "next.js", "nextjs", "react", "python", "sql", "postgresql", "mysql", 
     "api", "backend", "fullstack", "node", "typescript", "fastapi", "django",
-    "js", "next", "automation", "automação", "bot", "scraping", "ia", "ai", 
-    "mvp", "saas", "agente", "scrap"
+    "js", "next", "automation", "automação", "automações", "bot", "scraping", "ia", "ai", 
+    "mvp", "saas", "agente", "scrap", "landing page", "landingpage", "desenvolvimento"
 ]
 
 def get_chrome_main_version():
@@ -154,20 +157,27 @@ def salvar_vaga(conn, titulo, descricao, orcamento, link, keywords):
 def validar_vaga(titulo, descricao):
     texto = (str(titulo) + " " + str(descricao)).lower()
     
-    # Filtro de rejeição (Design, tradução, etc)
-    for palavra in PALAVRAS_REJEITADAS:
-        if palavra in texto:
+    # 1. Filtro de Rejeição Estrita (Sempre bloqueia)
+    for palavra in REJEICAO_ESTRITA:
+        if re.search(rf"\b{re.escape(palavra.lower())}\b", texto):
             return False, []
     
-    # Filtro de interesse (Stack)
+    # 2. Busca de Tecnologia (Match Técnico)
     keywords_encontradas = []
     for tech in TECNOLOGIAS_ALVO:
-        if tech in texto:
+        if re.search(rf"\b{re.escape(tech.lower())}\b", texto):
             keywords_encontradas.append(tech)
             
+    # 3. Lógica de Decisão Final
     if keywords_encontradas:
-        return True, list(set(keywords_encontradas)) # Remove duplicatas
+        # Se tem tecnologia, ignoramos a "rejeição soft" (ex: design) e aceitamos
+        return True, list(set(keywords_encontradas))
     
+    # 4. Filtro de Rejeição Soft (Bloqueia se não houver tecnologia)
+    for palavra in REJEICAO_SOFT:
+        if re.search(rf"\b{re.escape(palavra.lower())}\b", texto):
+            return False, []
+            
     return False, []
 
 def expandir_descricao(driver, job):
@@ -258,10 +268,10 @@ def scrape_workana(paginas=3):
                             print(f"✅ [ACEITA] {titulo[:60]} - Keywords: {', '.join(keywords)}")
                             vagas_encontradas += 1
                         else:
-                            # print(f"◽ Jǭ processada: {titulo[:30]}")
-                            pass
+                            print(f"◽ [JÁ EXISTE] {titulo[:30]}")
                     else:
-                        print(f"❌ [IGNORADA] {titulo[:30]} - Motivo: Não contém keywords alvo.")
+                        # print(f"❌ [IGNORADA] {titulo[:30]} - Motivo: Não contém keywords alvo.")
+                        pass
                         
                 except Exception as e:
                     # print(f"Erro ao processar item: {e}")
