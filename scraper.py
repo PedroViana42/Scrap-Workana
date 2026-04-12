@@ -67,16 +67,36 @@ def get_chrome_main_version():
         for cmd in commands:
             try:
                 output = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode()
-                match = re.search(r' (\d+)\.', output)
+                # Busca especificamente o número após "Chrome" ou "Google Chrome" ou "Chromium"
+                # Ex: "Google Chrome 146.0.7680.0" -> encontra 146
+                match = re.search(r'(?:Chrome|Google Chrome|Chromium)\s+(\d+)', output)
                 if match:
                     return int(match.group(1))
             except:
                 continue
-                
     except Exception as e:
         print(f"⚠️ Erro ao detectar versão do Chrome: {e}")
-    
     return None
+
+def get_driver_options():
+    """Retorna uma nova instância de ChromeOptions configurada"""
+    options = uc.ChromeOptions()
+    
+    # Se estiver no GitHub Actions ou HEADLESS=true, roda em headless
+    if os.getenv("GITHUB_ACTIONS") == "true" or os.getenv("HEADLESS") == "true":
+        options.add_argument("--headless")
+        options.add_argument("--window-size=1920,1080")
+    
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    
+    # User agent para evitar detecção básica
+    options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+    
+    return options
+                
 
 def enviar_telegram(titulo, link, orcamento, descricao, keywords):
     if not TELEGRAM_TOKEN or not CHAT_ID:
@@ -194,29 +214,26 @@ def expandir_descricao(driver, job):
 def scrape_workana(paginas=3):
     conn = init_db()
     
-    options = uc.ChromeOptions()
-    
-    # Modo Headless obrigatório em ambiente de CI (GitHub Actions)
-    if os.getenv('GITHUB_ACTIONS') == 'true' or os.getenv('HEADLESS') == 'true':
-        options.add_argument("--headless")
-        options.add_argument("--window-size=1920,1080")
-    
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    
     version_main = get_chrome_main_version()
     if version_main:
         print(f"✅ Utilizando Chrome v{version_main} detectado no sistema.")
     else:
         print("⚠️ Não foi possível detectar a versão do Chrome, deixando o UC decidir.")
     
+    driver = None
     try:
-        driver = uc.Chrome(options=options, version_main=version_main, use_subprocess=True)
+        # Tentativa 1: Com versão detectada
+        try:
+            driver = uc.Chrome(options=get_driver_options(), version_main=version_main, use_subprocess=True)
+        except Exception as e:
+            print(f"❌ Erro ao iniciar driver com versão {version_main}: {e}")
+            print("🔄 Tentando inicialização padrão com novas opções...")
+            # Tentativa 2: Sem especificar versão e com NOVAS opções (evita RuntimeError)
+            driver = uc.Chrome(options=get_driver_options(), use_subprocess=True)
+            
     except Exception as e:
-        print(f"❌ Erro ao iniciar driver com versão detectada: {e}")
-        print("🔄 Tentando inicialização padrão...")
-        driver = uc.Chrome(options=options, use_subprocess=True)
+        print(f"🛑 Erro fatal ao iniciar o navegador: {e}")
+        return
     
     vagas_encontradas = 0
     
