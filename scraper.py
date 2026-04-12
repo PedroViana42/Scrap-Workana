@@ -215,23 +215,13 @@ def expandir_descricao(driver, job):
 
 def scrape_workana(paginas=3):
     conn = init_db()
-    
-    version_full = get_chrome_version()
-    if version_full:
-        version_main = int(version_full.split('.')[0])
-        print(f"✅ Chrome v{version_full} detectado no sistema (versão principal: {version_main})")
-    else:
-        version_main = None
-        print("⚠️ Não foi possível detectar a versão do Chrome, deixando o UC decidir.")
+    print("🔄 Verificando Chrome...")
+    get_chrome_version()
     
     driver = None
     try:
-        try:
-            driver = uc.Chrome(options=get_driver_options(), version_main=version_main, use_subprocess=True)
-        except Exception as e:
-            print(f"❌ Erro ao iniciar driver com versão {version_main}: {e}")
-            print("🔄 Tentando inicialização padrão...")
-            driver = uc.Chrome(options=get_driver_options(), use_subprocess=True)
+        print("🔄 Iniciando ChromeDriver...")
+        driver = uc.Chrome(options=get_driver_options(), use_subprocess=True)
             
     except Exception as e:
         print(f"🛑 Erro fatal ao iniciar o navegador: {e}")
