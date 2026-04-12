@@ -43,20 +43,24 @@ TECNOLOGIAS_ALVO = [
     "mvp", "saas", "agente", "scrap", "landing page", "landingpage", "desenvolvimento"
 ]
 
-def get_chrome_main_version():
-    """Tenta detectar a versão principal do Chrome instalada no sistema"""
+def get_chrome_version():
+    """Detecta a versão completa do Chrome instalada no sistema"""
     try:
-        # Tenta no Windows via Registro
         if sys.platform == 'win32':
             import winreg
             try:
                 key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Google\Chrome\BLBeacon")
                 v, _ = winreg.QueryValueEx(key, "version")
-                return int(v.split('.')[0])
+                return v
+            except:
+                pass
+            try:
+                key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"Software\Google\Chrome\BLBeacon")
+                v, _ = winreg.QueryValueEx(key, "version")
+                return v
             except:
                 pass
         
-        # Tenta via linha de comando (Linux/Mac/Windows)
         commands = [
             ["google-chrome", "--version"],
             ["google-chrome-stable", "--version"],
@@ -67,11 +71,9 @@ def get_chrome_main_version():
         for cmd in commands:
             try:
                 output = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode()
-                # Busca especificamente o número após "Chrome" ou "Google Chrome" ou "Chromium"
-                # Ex: "Google Chrome 146.0.7680.0" -> encontra 146
-                match = re.search(r'(?:Chrome|Google Chrome|Chromium)\s+(\d+)', output)
+                match = re.search(r'(?:Chrome|Google Chrome|Chromium)\s+([\d.]+)', output)
                 if match:
-                    return int(match.group(1))
+                    return match.group(1)
             except:
                 continue
     except Exception as e:
@@ -214,21 +216,21 @@ def expandir_descricao(driver, job):
 def scrape_workana(paginas=3):
     conn = init_db()
     
-    version_main = get_chrome_main_version()
-    if version_main:
-        print(f"✅ Utilizando Chrome v{version_main} detectado no sistema.")
+    version_full = get_chrome_version()
+    if version_full:
+        version_main = int(version_full.split('.')[0])
+        print(f"✅ Chrome v{version_full} detectado no sistema (versão principal: {version_main})")
     else:
+        version_main = None
         print("⚠️ Não foi possível detectar a versão do Chrome, deixando o UC decidir.")
     
     driver = None
     try:
-        # Tentativa 1: Com versão detectada
         try:
             driver = uc.Chrome(options=get_driver_options(), version_main=version_main, use_subprocess=True)
         except Exception as e:
             print(f"❌ Erro ao iniciar driver com versão {version_main}: {e}")
-            print("🔄 Tentando inicialização padrão com novas opções...")
-            # Tentativa 2: Sem especificar versão e com NOVAS opções (evita RuntimeError)
+            print("🔄 Tentando inicialização padrão...")
             driver = uc.Chrome(options=get_driver_options(), use_subprocess=True)
             
     except Exception as e:
