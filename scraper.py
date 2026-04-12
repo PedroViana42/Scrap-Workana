@@ -10,6 +10,8 @@ import requests
 import sys
 from datetime import datetime
 from dotenv import load_dotenv
+import subprocess
+import re
 
 # Forǜa UTF-8 no terminal para evitar erros de emoji no Windows
 if sys.stdout.encoding != 'utf-8':
@@ -37,6 +39,41 @@ TECNOLOGIAS_ALVO = [
     "js", "next", "automation", "automação", "bot", "scraping", "ia", "ai", 
     "mvp", "saas", "agente", "scrap"
 ]
+
+def get_chrome_main_version():
+    """Tenta detectar a versão principal do Chrome instalada no sistema"""
+    try:
+        # Tenta no Windows via Registro
+        if sys.platform == 'win32':
+            import winreg
+            try:
+                key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Google\Chrome\BLBeacon")
+                v, _ = winreg.QueryValueEx(key, "version")
+                return int(v.split('.')[0])
+            except:
+                pass
+        
+        # Tenta via linha de comando (Linux/Mac/Windows)
+        commands = [
+            ["google-chrome", "--version"],
+            ["google-chrome-stable", "--version"],
+            ["chrome", "--version"],
+            ["chromium", "--version"]
+        ]
+        
+        for cmd in commands:
+            try:
+                output = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode()
+                match = re.search(r' (\d+)\.', output)
+                if match:
+                    return int(match.group(1))
+            except:
+                continue
+                
+    except Exception as e:
+        print(f"⚠️ Erro ao detectar versão do Chrome: {e}")
+    
+    return None
 
 def enviar_telegram(titulo, link, orcamento, descricao, keywords):
     if not TELEGRAM_TOKEN or not CHAT_ID:
@@ -158,7 +195,18 @@ def scrape_workana(paginas=3):
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-blink-features=AutomationControlled")
     
-    driver = uc.Chrome(options=options)
+    version_main = get_chrome_main_version()
+    if version_main:
+        print(f"✅ Utilizando Chrome v{version_main} detectado no sistema.")
+    else:
+        print("⚠️ Não foi possível detectar a versão do Chrome, deixando o UC decidir.")
+    
+    try:
+        driver = uc.Chrome(options=options, version_main=version_main, use_subprocess=True)
+    except Exception as e:
+        print(f"❌ Erro ao iniciar driver com versão detectada: {e}")
+        print("🔄 Tentando inicialização padrão...")
+        driver = uc.Chrome(options=options, use_subprocess=True)
     
     vagas_encontradas = 0
     
