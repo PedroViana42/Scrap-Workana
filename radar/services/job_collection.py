@@ -72,6 +72,8 @@ class JobCollectionService:
             items_deactivated = 0
             active_before = self.jobs.count_active_by_company_source(company_source_id) if company_source_id else 0
             for collected_job in result.jobs:
+                if run.started_at and collected_job.job.collected_at < run.started_at:
+                    collected_job.job.collected_at = run.started_at
                 job_db, created = self.jobs.upsert(
                     collected_job.job,
                     company_source_id=company_source_id,
