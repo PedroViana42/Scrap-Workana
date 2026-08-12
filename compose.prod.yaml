@@ -1,0 +1,68 @@
+x-radar-env: &radar-env
+  DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://radar:CHANGE_ME@postgres:5432/radar}
+  RADAR_HTTP_TIMEOUT: ${RADAR_HTTP_TIMEOUT:-20}
+  RADAR_HTTP_USER_AGENT: ${RADAR_HTTP_USER_AGENT:-RadarBot/0.1 (+https://github.com/PedroViana42/Radar)}
+  RADAR_SCHEDULER_POLL_SECONDS: ${RADAR_SCHEDULER_POLL_SECONDS:-60}
+  RADAR_SCHEDULER_BATCH_SIZE: ${RADAR_SCHEDULER_BATCH_SIZE:-5}
+  RADAR_LIFECYCLE_MIN_RESULT_RATIO: ${RADAR_LIFECYCLE_MIN_RESULT_RATIO:-0.20}
+  RADAR_SCHEDULER_TIMEZONE: ${RADAR_SCHEDULER_TIMEZONE:-UTC}
+
+services:
+  postgres:
+    image: postgres:17.6
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-radar}
+      POSTGRES_USER: ${POSTGRES_USER:-radar}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-CHANGE_ME}
+    volumes:
+      - radar_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    mem_limit: 1g
+    cpus: "2.0"
+
+  migrate:
+    image: ${RADAR_IMAGE:-radar:local}
+    restart: "no"
+    environment:
+      <<: *radar-env
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  bootstrap:
+    image: ${RADAR_IMAGE:-radar:local}
+    restart: "no"
+    environment:
+      <<: *radar-env
+    command: ["python", "-m", "radar.cli", "bootstrap"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  scheduler:
+    image: ${RADAR_IMAGE:-radar:local}
+    restart: unless-stopped
+    environment:
+      <<: *radar-env
+    command: ["python", "-m", "radar.cli", "scheduler"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      bootstrap:
+        condition: service_completed_successfully
+    mem_limit: 512m
+    cpus: "1.0"
+
+volumes:
+  radar_postgres_data:

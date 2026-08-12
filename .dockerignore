@@ -1,0 +1,17 @@
+.git
+.github
+__pycache__
+*.pyc
+.pytest_cache
+.env
+.env.*
+vagas.db
+*.db
+tests
+docs
+venv
+.venv
+.idea
+.vscode
+*.log
+outputs

@@ -1,0 +1,14 @@
+{
+  "jobs": [
+    {
+      "id": 123,
+      "title": "Software Engineer",
+      "absolute_url": "https://example.com/greenhouse/software-engineer",
+      "content": "<p>Build APIs &amp; internal tools.</p>",
+      "location": {"name": "Remote"},
+      "requisition_id": "REQ-1",
+      "departments": [{"name": "Engineering"}],
+      "offices": [{"name": "Remote"}]
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "jobs": [
+    {
+      "id": "ashby-1",
+      "title": "Machine Learning Engineer",
+      "descriptionPlain": "Train and ship ML models.",
+      "jobUrl": "https://example.com/ashby/ml-engineer",
+      "applyUrl": "https://example.com/ashby/ml-engineer/apply",
+      "location": "Remote",
+      "workplaceType": "Remote",
+      "isRemote": true,
+      "employmentType": "Full Time",
+      "publishedAt": "2026-08-10T12:00:00Z",
+      "department": "AI",
+      "team": "Applied AI",
+      "secondaryLocations": ["Brazil"],
+      "compensation": [
+        {
+          "type": "Salary",
+          "min": 120000,
+          "max": 180000,
+          "currency": "USD"
+        },
+        {
+          "type": "Equity",
+          "min": 1,
+          "max": 2,
+          "currency": "PCT"
+        }
+      ]
+    }
+  ]
+}

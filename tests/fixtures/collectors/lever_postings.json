@@ -1,0 +1,24 @@
+[
+  {
+    "id": "lever-1",
+    "text": "Data Engineer",
+    "hostedUrl": "https://example.com/lever/data-engineer",
+    "applyUrl": "https://example.com/lever/data-engineer/apply",
+    "descriptionPlain": "Build data pipelines.",
+    "createdAt": 1723284000000,
+    "workplaceType": "remote",
+    "categories": {
+      "location": "Brazil",
+      "team": "Data",
+      "department": "Engineering",
+      "commitment": "Full-time"
+    },
+    "salaryRange": {
+      "min": 100000,
+      "max": 140000,
+      "currency": "USD"
+    },
+    "allLocations": ["Brazil"],
+    "country": "BR"
+  }
+]
