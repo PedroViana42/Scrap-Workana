@@ -240,6 +240,15 @@ def scheduler_status() -> int:
     return 0
 
 
+def api_command() -> int:
+    import uvicorn
+
+    from radar.config import settings
+
+    uvicorn.run("radar.api.app:app", host=settings.api_host, port=settings.api_port)
+    return 0
+
+
 def rescore_jobs(args: argparse.Namespace) -> int:
     with session_scope() as session:
         repository = JobRepository(session)
@@ -308,6 +317,7 @@ def build_parser() -> argparse.ArgumentParser:
     scheduler_parser.add_argument("--dry-run", action="store_true")
     scheduler_parser.add_argument("--max-companies", type=int)
     subparsers.add_parser("scheduler-status")
+    subparsers.add_parser("api")
     return parser
 
 
@@ -334,6 +344,8 @@ def main() -> int:
         return scheduler_command(args)
     if args.command == "scheduler-status":
         return scheduler_status()
+    if args.command == "api":
+        return api_command()
 
     parser.error(f"Unknown command: {args.command}")
     return 2

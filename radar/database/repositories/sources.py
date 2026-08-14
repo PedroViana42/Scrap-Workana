@@ -17,6 +17,9 @@ class SourceRepository:
     def list_enabled(self) -> list[SourceDB]:
         return list(self.session.scalars(select(SourceDB).where(SourceDB.enabled.is_(True))))
 
+    def list_all(self) -> list[SourceDB]:
+        return list(self.session.scalars(select(SourceDB).order_by(SourceDB.priority, SourceDB.name)))
+
     def upsert(self, source: SourceConfig) -> SourceDB:
         values = source_config_to_values(source)
         existing = self.get_by_name(source.name)
