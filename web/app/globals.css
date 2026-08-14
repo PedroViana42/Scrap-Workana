@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f6f8fa;
+  --surface: #ffffff;
+  --surface-subtle: #f6f8fa;
+  --border: #d8dee4;
+  --border-muted: #eaeef2;
+  --text: #0f172a;
+  --muted: #57606a;
+  --blue: #2563eb;
+  --blue-subtle: #eff6ff;
+  --green: #1a7f37;
+  --amber: #b45309;
+  --red: #c2410c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--background);
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px;
+  letter-spacing: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.container-shell {
+  width: min(100%, 1240px);
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  border: 1px solid var(--border-muted);
+  border-radius: 6px;
+  background: var(--surface-subtle);
+  padding: 2px 8px;
+  color: #1f2937;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.score-excellent {
+  color: var(--green);
+}
+
+.score-strong {
+  color: var(--blue);
+}
+
+.score-interesting {
+  color: var(--amber);
+}
+
+.score-low,
+.score-very_low {
+  color: var(--red);
+}
