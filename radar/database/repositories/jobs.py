@@ -165,7 +165,9 @@ class JobRepository:
         if filters.max_score is not None:
             statement = statement.where(JobDB.relevance_score <= filters.max_score)
         if filters.relevance_band:
-            statement = statement.where(JobDB.relevance_band == filters.relevance_band)
+            statement = statement.where(
+                func.lower(JobDB.relevance_band) == filters.relevance_band.lower().strip()
+            )
         if filters.location:
             statement = statement.where(JobDB.location.ilike(f"%{filters.location.strip()}%"))
         if filters.technology:

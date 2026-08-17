@@ -37,7 +37,7 @@ class StatsRepository:
             .group_by(JobDB.relevance_band)
         )
         for band, count in rows:
-            expected[str(band)] = int(count)
+            expected[str(band).lower()] = int(count)
         return expected
 
     def scrape_runs_24h(self) -> dict[str, int]:
