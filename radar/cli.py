@@ -11,6 +11,7 @@ from radar.services.company_validation import validate_company_catalog
 from radar.database.repositories.jobs import JobRepository
 from radar.models.enums import EmploymentType, RemoteType, Seniority
 from radar.models.job import Job
+from radar.relevance.profiles import TECH_EARLY_CAREER_BR_PROFILE
 from radar.relevance.scoring import score_job
 from radar.scheduler.cycle import run_scheduler_cycle, list_due_company_sources, scheduler_batch_size
 from radar.scheduler.scheduler import RadarScheduler
@@ -19,6 +20,13 @@ from radar.sources.types import ContentType
 
 
 logger = logging.getLogger(__name__)
+
+
+def positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed < 1:
+        raise argparse.ArgumentTypeError("must be greater than zero")
+    return parsed
 
 
 def db_check() -> int:
@@ -250,21 +258,39 @@ def api_command() -> int:
 
 
 def rescore_jobs(args: argparse.Namespace) -> int:
-    with session_scope() as session:
-        repository = JobRepository(session)
-        jobs = repository.list_for_rescore(limit=args.limit)
-        processed = 0
-        for job_db in jobs:
-            job = _job_db_to_domain(job_db)
-            relevance = score_job(job)
-            processed += 1
+    processed = 0
+    after_id = 0
+    target_version = TECH_EARLY_CAREER_BR_PROFILE.version
+    while args.limit is None or processed < args.limit:
+        remaining = args.limit - processed if args.limit is not None else args.batch_size
+        batch_limit = min(args.batch_size, remaining)
+        with session_scope() as session:
+            repository = JobRepository(session)
+            jobs = repository.list_for_rescore(
+                after_id=after_id,
+                limit=batch_limit,
+                exclude_version=target_version if args.only_outdated else None,
+                active_only=args.active_only,
+            )
+            if not jobs:
+                break
+            for job_db in jobs:
+                job = _job_db_to_domain(job_db)
+                relevance = score_job(job)
+                processed += 1
+                if not args.dry_run:
+                    repository.update_relevance(job_db.id, relevance, technologies=job.technologies)
+            after_id = jobs[-1].id
             if args.dry_run:
-                print(f"{relevance.score:3d}  job_id={job_db.id}  {job.title}")
-            else:
-                repository.update_relevance(job_db.id, relevance, technologies=job.technologies)
-        if args.dry_run:
-            session.rollback()
-        print(f"rescore-jobs ok: processed={processed}, dry_run={args.dry_run}")
+                session.rollback()
+        print(
+            f"rescore-jobs progress: processed={processed}, last_id={after_id}, "
+            f"dry_run={args.dry_run}"
+        )
+    print(
+        f"rescore-jobs ok: processed={processed}, dry_run={args.dry_run}, "
+        f"target_version={target_version}"
+    )
     return 0
 
 
@@ -311,7 +337,10 @@ def build_parser() -> argparse.ArgumentParser:
     collect_parser.add_argument("--limit", type=int, default=5)
     rescore_parser = subparsers.add_parser("rescore-jobs")
     rescore_parser.add_argument("--dry-run", action="store_true")
-    rescore_parser.add_argument("--limit", type=int)
+    rescore_parser.add_argument("--limit", type=positive_int)
+    rescore_parser.add_argument("--batch-size", type=positive_int, default=500)
+    rescore_parser.add_argument("--only-outdated", action="store_true")
+    rescore_parser.add_argument("--active-only", action="store_true")
     scheduler_parser = subparsers.add_parser("scheduler")
     scheduler_parser.add_argument("--once", action="store_true")
     scheduler_parser.add_argument("--dry-run", action="store_true")

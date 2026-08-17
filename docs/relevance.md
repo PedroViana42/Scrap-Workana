@@ -120,6 +120,11 @@ python -m radar.cli rescore-jobs --dry-run
 python -m radar.cli rescore-jobs
 ```
 
+The command processes jobs in keyset-paginated batches and commits each batch independently.
+Use `--only-outdated` to skip jobs already scored by the current engine version, and
+`--batch-size` to tune the transaction size. By default it includes active and inactive jobs;
+`--active-only` restricts the operation to active jobs.
+
 Dry-run collection with score:
 
 ```bash
