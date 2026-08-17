@@ -2,8 +2,9 @@
 set -Eeuo pipefail
 
 IMAGE_REF="${1:?IMAGE_REF is required}"
-GHCR_USER="${2:?GHCR_USER is required}"
-DEPLOY_SHA="${3:?DEPLOY_SHA is required}"
+WEB_IMAGE_REF="${2:?WEB_IMAGE_REF is required}"
+GHCR_USER="${3:?GHCR_USER is required}"
+DEPLOY_SHA="${4:?DEPLOY_SHA is required}"
 
 IFS= read -r GHCR_TOKEN
 
@@ -17,11 +18,14 @@ FINAL_SCRIPT="$DEPLOY_DIR/remote_deploy.sh"
 LOCK_FILE="$DEPLOY_DIR/deploy.lock"
 CURRENT_IMAGE_FILE="$DEPLOY_DIR/current_image"
 PREVIOUS_IMAGE_FILE="$DEPLOY_DIR/previous_image"
+CURRENT_WEB_IMAGE_FILE="$DEPLOY_DIR/current_web_image"
+PREVIOUS_WEB_IMAGE_FILE="$DEPLOY_DIR/previous_web_image"
 LAST_DEPLOY_SHA_FILE="$DEPLOY_DIR/last_deploy_sha"
 LAST_DEPLOY_AT_FILE="$DEPLOY_DIR/last_deploy_at"
 CURRENT_ENV_FILE="$DEPLOY_DIR/current.env"
 DOCKER_CONFIG_DIR=""
 PREVIOUS_IMAGE=""
+PREVIOUS_WEB_IMAGE=""
 SCHEDULER_WAS_STOPPED=0
 
 log() {
@@ -49,11 +53,13 @@ rollback_image_best_effort() {
 
   log "Attempting best-effort image rollback. Database migrations are not reverted."
   if [[ -f "$FINAL_COMPOSE" && -f "$ENV_FILE" ]]; then
-    RADAR_IMAGE="$PREVIOUS_IMAGE" docker compose \
+    RADAR_IMAGE="$PREVIOUS_IMAGE" \
+      RADAR_WEB_IMAGE="${PREVIOUS_WEB_IMAGE:-$WEB_IMAGE_REF}" \
+      docker compose \
       -p radar \
       --env-file "$ENV_FILE" \
       -f "$FINAL_COMPOSE" \
-      up -d scheduler || log "Best-effort rollback failed."
+      up -d scheduler api web || log "Best-effort rollback failed."
   fi
 }
 
@@ -89,6 +95,7 @@ fi
 
 log "Deploy SHA: $DEPLOY_SHA"
 log "Image: $IMAGE_REF"
+log "Web image: $WEB_IMAGE_REF"
 
 DOCKER_CONFIG_DIR="$(mktemp -d)"
 printf '%s\n' "$GHCR_TOKEN" | docker --config "$DOCKER_CONFIG_DIR" login ghcr.io -u "$GHCR_USER" --password-stdin >/dev/null
@@ -98,9 +105,15 @@ if ! docker --config "$DOCKER_CONFIG_DIR" pull "$IMAGE_REF"; then
   exit 1
 fi
 
-docker run --rm "$IMAGE_REF" python -c "import radar.cli; print('radar-image-ok')"
+if ! docker --config "$DOCKER_CONFIG_DIR" pull "$WEB_IMAGE_REF"; then
+  log "GHCR web image pull denied. Package permissions/visibility need review."
+  exit 1
+fi
 
-RADAR_IMAGE="$IMAGE_REF" docker compose \
+docker run --rm "$IMAGE_REF" python -c "import radar.cli; print('radar-image-ok')"
+docker run --rm "$WEB_IMAGE_REF" node --version
+
+RADAR_IMAGE="$IMAGE_REF" RADAR_WEB_IMAGE="$WEB_IMAGE_REF" docker compose \
   -p radar \
   --env-file "$ENV_FILE" \
   -f "$NEW_COMPOSE" \
@@ -110,6 +123,10 @@ if [[ -f "$CURRENT_IMAGE_FILE" ]]; then
   PREVIOUS_IMAGE="$(<"$CURRENT_IMAGE_FILE")"
   printf '%s\n' "$PREVIOUS_IMAGE" > "$PREVIOUS_IMAGE_FILE"
 fi
+if [[ -f "$CURRENT_WEB_IMAGE_FILE" ]]; then
+  PREVIOUS_WEB_IMAGE="$(<"$CURRENT_WEB_IMAGE_FILE")"
+  printf '%s\n' "$PREVIOUS_WEB_IMAGE" > "$PREVIOUS_WEB_IMAGE_FILE"
+fi
 
 mv "$NEW_COMPOSE" "$FINAL_COMPOSE"
 if [[ -f "$NEW_SCRIPT" ]]; then
@@ -118,7 +135,7 @@ if [[ -f "$NEW_SCRIPT" ]]; then
 fi
 
 compose() {
-  RADAR_IMAGE="$IMAGE_REF" docker compose \
+  RADAR_IMAGE="$IMAGE_REF" RADAR_WEB_IMAGE="$WEB_IMAGE_REF" docker compose \
     -p radar \
     --env-file "$ENV_FILE" \
     -f "$FINAL_COMPOSE" \
@@ -127,6 +144,9 @@ compose() {
 
 log "Starting postgres."
 compose up -d postgres
+
+log "Stopping existing web and API, if present."
+compose stop -t 30 web api
 
 log "Stopping existing scheduler, if present."
 if [[ -n "$(compose ps -q scheduler)" ]]; then
@@ -152,6 +172,9 @@ compose run --rm bootstrap
 log "Starting scheduler."
 compose up -d scheduler
 
+log "Starting API and web."
+compose up -d --wait --wait-timeout 180 api web
+
 sleep 20
 
 SCHEDULER_ID="$(compose ps -q scheduler)"
@@ -174,6 +197,7 @@ fi
 
 compose exec -T scheduler python -m radar.cli db-check
 compose exec -T scheduler python -m radar.cli scheduler-status
+compose exec -T api python -m radar.cli db-check
 
 compose exec -T scheduler python - <<'PY'
 from sqlalchemy import text
@@ -192,12 +216,16 @@ with session_scope() as session:
 PY
 
 printf '%s\n' "$IMAGE_REF" > "$CURRENT_IMAGE_FILE"
+printf '%s\n' "$WEB_IMAGE_REF" > "$CURRENT_WEB_IMAGE_FILE"
 printf '%s\n' "$DEPLOY_SHA" > "$LAST_DEPLOY_SHA_FILE"
 date -u +"%Y-%m-%dT%H:%M:%SZ" > "$LAST_DEPLOY_AT_FILE"
-printf 'RADAR_IMAGE=%s\n' "$IMAGE_REF" > "$CURRENT_ENV_FILE"
-chmod 644 "$CURRENT_IMAGE_FILE" "$LAST_DEPLOY_SHA_FILE" "$LAST_DEPLOY_AT_FILE" "$CURRENT_ENV_FILE"
+printf 'RADAR_IMAGE=%s\nRADAR_WEB_IMAGE=%s\n' "$IMAGE_REF" "$WEB_IMAGE_REF" > "$CURRENT_ENV_FILE"
+chmod 644 "$CURRENT_IMAGE_FILE" "$CURRENT_WEB_IMAGE_FILE" "$LAST_DEPLOY_SHA_FILE" "$LAST_DEPLOY_AT_FILE" "$CURRENT_ENV_FILE"
 if [[ -f "$PREVIOUS_IMAGE_FILE" ]]; then
   chmod 644 "$PREVIOUS_IMAGE_FILE"
+fi
+if [[ -f "$PREVIOUS_WEB_IMAGE_FILE" ]]; then
+  chmod 644 "$PREVIOUS_WEB_IMAGE_FILE"
 fi
 
 compose ps

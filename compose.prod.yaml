@@ -7,6 +7,12 @@ x-radar-env: &radar-env
   RADAR_LIFECYCLE_MIN_RESULT_RATIO: ${RADAR_LIFECYCLE_MIN_RESULT_RATIO:-0.20}
   RADAR_SCHEDULER_TIMEZONE: ${RADAR_SCHEDULER_TIMEZONE:-UTC}
 
+x-runtime-logging: &runtime-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
     image: postgres:17.6
@@ -61,6 +67,59 @@ services:
         condition: service_completed_successfully
       bootstrap:
         condition: service_completed_successfully
+    mem_limit: 512m
+    cpus: "1.0"
+
+  api:
+    image: ${RADAR_IMAGE:-radar:local}
+    restart: unless-stopped
+    environment:
+      <<: *radar-env
+      RADAR_API_HOST: 0.0.0.0
+      RADAR_API_PORT: 8000
+    command: ["python", "-m", "radar.cli", "api"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      bootstrap:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=5)"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    logging: *runtime-logging
+    mem_limit: 512m
+    cpus: "1.0"
+
+  web:
+    image: ${RADAR_WEB_IMAGE:-radar-web:local}
+    restart: unless-stopped
+    environment:
+      RADAR_API_BASE_URL: http://api:8000
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/').then(response => { if (!response.ok) process.exit(1) }).catch(() => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    logging: *runtime-logging
     mem_limit: 512m
     cpus: "1.0"
 
