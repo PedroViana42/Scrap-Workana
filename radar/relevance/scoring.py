@@ -134,17 +134,22 @@ def _score_seniority(job: Job, profile: JobRelevanceProfile) -> tuple[int, list[
         "director": bool({"director", "head", "vp"} & signal_set),
         "manager": "manager" in signal_set,
         "senior": bool({"senior", "sr", "master", "specialist"} & signal_set) or job.seniority is Seniority.SENIOR,
+        "level_ii_or_iii": bool({"engineer ii", "engineer iii", "level 2", "level ii", "level 3", "level iii"} & signal_set),
+        "experience_3_plus": False,
+        "experience_5_plus": False,
     }
     score = 16
 
     early_terms = {
         "intern",
         "internship",
+        "apprentice",
         "estagio",
         "trainee",
         "junior",
         "jr",
         "entry level",
+        "entry-level",
         "early career",
         "new grad",
         "graduate",
@@ -158,8 +163,11 @@ def _score_seniority(job: Job, profile: JobRelevanceProfile) -> tuple[int, list[
         score = 25
         reasons["positive"].append("Early-career title")
     elif job.seniority is Seniority.MID or signal_set & {"mid", "mid-level", "pleno", "engineer ii", "engineer iii"}:
-        score = 17
-        reasons["positive"].append("Mid-level role can still be relevant")
+        score = 13 if flags["level_ii_or_iii"] else 17
+        if flags["level_ii_or_iii"]:
+            reasons["negative"].append("Level II/III title")
+        else:
+            reasons["positive"].append("Mid-level role can still be relevant")
     elif flags["director"]:
         score = 0
         reasons["negative"].append("Director/head/VP title")
@@ -177,21 +185,21 @@ def _score_seniority(job: Job, profile: JobRelevanceProfile) -> tuple[int, list[
 
     experience = detect_experience(job.description)
     if experience.years is not None:
-        if experience.years <= 2:
-            score = min(profile.seniority_max, score + 4)
-            reasons["positive"].append(f"Low experience requirement: {experience.phrase}")
-        elif experience.years == 3:
-            score = max(0, score - 2)
-            reasons["negative"].append(f"Moderate experience requirement: {experience.phrase}")
-        elif experience.years >= 8:
-            score = max(0, score - 10)
-            reasons["negative"].append(f"Requires {experience.years}+ years")
+        if experience.years <= 1:
+            score = min(profile.seniority_max, score + 5)
+            reasons["positive"].append(f"Early-career experience requirement: {experience.phrase}")
+        elif experience.years == 2:
+            score = min(profile.seniority_max, score + 2)
+            reasons["positive"].append(f"Compatible experience requirement: {experience.phrase}")
         elif experience.years >= 5:
-            score = max(0, score - 8)
-            reasons["negative"].append(f"Requires {experience.years}+ years")
-        elif experience.years >= 4:
-            score = max(0, score - 5)
-            reasons["negative"].append(f"Requires {experience.years}+ years")
+            score = max(0, score - 15)
+            flags["experience_3_plus"] = True
+            flags["experience_5_plus"] = True
+            reasons["negative"].append(f"Requires {experience.years}+ years experience")
+        elif experience.years >= 3:
+            score = max(0, score - (8 if experience.years == 3 else 10))
+            flags["experience_3_plus"] = True
+            reasons["negative"].append(f"Requires {experience.years}+ years experience")
 
     return min(score, profile.seniority_max), signals, flags, reasons
 
@@ -205,6 +213,9 @@ def _score_location(job: Job, profile: JobRelevanceProfile) -> tuple[int, list[s
     elif signal.category is LocationCategory.LATAM_INCLUDING_BRAZIL:
         score = 18
         reasons["positive"].append("LATAM includes Brazil")
+    elif signal.category is LocationCategory.AMERICAS:
+        score = 16
+        reasons["positive"].append("Americas remote")
     elif signal.category is LocationCategory.GLOBAL:
         score = 18
         reasons["positive"].append("Worldwide/global remote")
@@ -220,9 +231,12 @@ def _score_location(job: Job, profile: JobRelevanceProfile) -> tuple[int, list[s
     elif signal.category is LocationCategory.FOREIGN_RESTRICTED:
         score = 1
         reasons["negative"].extend(signal.exclusions)
+    elif signal.category is LocationCategory.FOREIGN_ONSITE:
+        score = 0
+        reasons["negative"].extend(signal.exclusions)
     else:
-        score = 9
-        reasons["positive"].append("Location eligibility unknown")
+        score = 7
+        reasons["negative"].append("Location eligibility unclear")
     return min(score, profile.location_max), signal.signals, signal.category, reasons
 
 
@@ -280,6 +294,8 @@ def _caps(
             caps.append((49, "Foreign tech-adjacent role"))
         if seniority_flags["staff_lead"]:
             caps.append((39, "Foreign staff/principal/lead role"))
+    if location_category is LocationCategory.FOREIGN_ONSITE:
+        caps.append((35, "Foreign on-site role"))
     if location_category is LocationCategory.BRAZIL_EXCLUDED:
         caps.append((39, "Role explicitly excludes Brazil"))
     if seniority_flags["director"]:
@@ -290,4 +306,8 @@ def _caps(
         caps.append((55, "Staff/principal/lead-level position"))
     elif seniority_flags["senior"] or job.seniority is Seniority.SENIOR:
         caps.append((65, "Senior-level role"))
+    if seniority_flags["experience_5_plus"]:
+        caps.append((55, "High experience requirement"))
+    elif seniority_flags["experience_3_plus"]:
+        caps.append((74, "Experience requirement above early-career target"))
     return caps
