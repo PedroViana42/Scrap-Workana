@@ -18,6 +18,13 @@ class Settings:
         "RADAR_HTTP_USER_AGENT",
         "RadarBot/0.1 (+https://github.com/PedroViana42/Radar)",
     )
+    api_host: str = os.getenv("RADAR_API_HOST", "127.0.0.1")
+    api_port: int = int(os.getenv("RADAR_API_PORT", "8000"))
+    api_cors_origins: tuple[str, ...] = tuple(
+        origin.strip()
+        for origin in os.getenv("RADAR_API_CORS_ORIGINS", "").split(",")
+        if origin.strip()
+    )
 
     def require_database_url(self) -> str:
         if not self.database_url:

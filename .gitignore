@@ -5,3 +5,9 @@ __pycache__/
 venv/
 .pytest_cache/
 *.db
+web/.next/
+web/node_modules/
+web/node_modules.partial.*/
+web/tsconfig.tsbuildinfo
+web/AGENTS.md
+web/CLAUDE.md
