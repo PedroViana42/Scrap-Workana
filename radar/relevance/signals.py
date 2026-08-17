@@ -20,10 +20,12 @@ class RoleConfidence(str, Enum):
 class LocationCategory(str, Enum):
     BRAZIL = "BRAZIL"
     LATAM_INCLUDING_BRAZIL = "LATAM_INCLUDING_BRAZIL"
+    AMERICAS = "AMERICAS"
     GLOBAL = "GLOBAL"
     REMOTE_UNSCOPED = "REMOTE_UNSCOPED"
     FOREIGN_COMPATIBLE_UNKNOWN = "FOREIGN_COMPATIBLE_UNKNOWN"
     FOREIGN_RESTRICTED = "FOREIGN_RESTRICTED"
+    FOREIGN_ONSITE = "FOREIGN_ONSITE"
     BRAZIL_EXCLUDED = "BRAZIL_EXCLUDED"
     UNKNOWN = "UNKNOWN"
 
@@ -51,7 +53,16 @@ LATAM_INCLUDE_BRAZIL_TERMS = [
     "inclui brasil",
     "brazil included",
 ]
-WORLDWIDE_TERMS = ["worldwide", "global remote", "anywhere", "anywhere in the world", "global"]
+AMERICAS_TERMS = ["americas", "north and south america"]
+WORLDWIDE_REMOTE_TERMS = [
+    "worldwide remote",
+    "remote worldwide",
+    "global remote",
+    "remote globally",
+    "work from anywhere",
+    "remote anywhere",
+]
+WORLDWIDE_LOCATION_TERMS = ["worldwide", "global"]
 REMOTE_TERMS = ["remote", "remoto", "remota"]
 EXCLUSION_TERMS = [
     "us only",
@@ -62,6 +73,15 @@ EXCLUSION_TERMS = [
     "emea only",
     "uk only",
     "united states only",
+    "remote - us",
+    "remote us",
+    "remote - usa",
+    "remote usa",
+    "remote - united states",
+    "remote united states",
+    "eu only",
+    "remote - eu",
+    "remote eu",
 ]
 LATAM_EXCLUDING_BRAZIL = ["latam excluding brazil", "latin america excluding brazil", "except brazil", "except brasil"]
 FOREIGN_TERMS = [
@@ -77,12 +97,28 @@ FOREIGN_TERMS = [
     " u.s.",
     " us ",
     "palo alto",
+    "san francisco",
+    "new york",
+    "seattle",
+    "chicago",
     "canada",
     "uk",
     "united kingdom",
     "germany",
     "spain",
     "portugal",
+    "ireland",
+    "greece",
+    "norway",
+    "france",
+    "italy",
+    "netherlands",
+    "sweden",
+    "denmark",
+    "belgium",
+    "switzerland",
+    "australia",
+    "new zealand",
 ]
 
 ROLE_FAMILIES = {
@@ -156,11 +192,13 @@ MANAGEMENT_TERMS = ["manager", "director", "head", "vp", "program manager", "pro
 EARLY_TITLE_TERMS = [
     "intern",
     "internship",
+    "apprentice",
     "estagio",
     "trainee",
     "junior",
     "jr",
     "entry level",
+    "entry-level",
     "early career",
     "new grad",
     "graduate",
@@ -181,6 +219,7 @@ EXTREME_SENIOR_TERMS = STAFF_LEAD_TERMS + DIRECTOR_TERMS + ["manager", "master",
 class ExperienceSignal:
     years: int | None
     phrase: str | None
+    maximum_years: int | None = None
 
 
 @dataclass(frozen=True)
@@ -213,6 +252,10 @@ def normalize_text(value: str | None) -> str:
 def _contains_any(text: str, terms: list[str]) -> bool:
     padded = f" {text} "
     return any(term in padded or term in text for term in terms)
+
+
+def _contains_phrase(text: str, phrase: str) -> bool:
+    return re.search(rf"(?<![a-z0-9]){re.escape(phrase)}(?![a-z0-9])", text) is not None
 
 
 def _matched_families(text: str) -> list[str]:
@@ -265,31 +308,47 @@ def detect_seniority_signals(job: Job) -> tuple[list[str], bool]:
         signals.append("mid")
     if job.seniority is Seniority.SENIOR:
         signals.append("senior")
-    signals.extend(term for term in EARLY_TITLE_TERMS if term in title)
-    signals.extend(term for term in MID_TITLE_TERMS if term in title)
-    signals.extend(term for term in SENIOR_TITLE_TERMS if term in title)
-    extreme = any(term in title for term in EXTREME_SENIOR_TERMS)
+    signals.extend(term for term in EARLY_TITLE_TERMS if _contains_phrase(title, term))
+    signals.extend(term for term in MID_TITLE_TERMS if _contains_phrase(title, term))
+    signals.extend(term for term in SENIOR_TITLE_TERMS if _contains_phrase(title, term))
+    extreme = any(_contains_phrase(title, term) for term in EXTREME_SENIOR_TERMS)
     return sorted(set(signals)), extreme
 
 
 def detect_experience(description: str | None) -> ExperienceSignal:
     text = normalize_text(description)
-    contextual_patterns = [
-        r"(?:experience|required|requirement|minimum|minimo|at least|pelo menos|experiencia).{0,35}?(\d+)\s*\+\s*(?:years?|anos?)",
-        r"(?:experience|required|requirement|minimum|minimo|at least|pelo menos|experiencia).{0,35}?(\d+)\s*[-/]\s*(\d+)\s*(?:years?|anos?)",
-        r"(\d+)\s*[-/]\s*(\d+)\s*(?:years?|anos?).{0,35}?(?:experience|experiencia)",
-        r"(\d+)\s*\+\s*(?:years?|anos?).{0,35}?(?:experience|experiencia)",
-        r"(\d+)\s*(?:years?|anos?).{0,35}?(?:experience|experiencia)",
+    unit = r"(?:years?|anos?)"
+    context_after = (
+        r"(?:of\s+)?(?:[a-z+#./-]+\s+){0,3}(?:experience|experiencia)"
+        r"|in\s+(?:a\s+)?[a-z][a-z /+-]{0,45}?\s+role"
+    )
+    prefix = r"(?:minimum|minimo|at least|pelo menos|requires?|required|requirement|requisito)\s*[:\-]?\s*"
+    matches: list[tuple[int, int | None, str, int, int]] = []
+    patterns = [
+        rf"(?:{prefix})?(\d+)\s*[-–]\s*(\d+)\s*{unit}\s*(?:{context_after})",
+        rf"(?:{prefix})?(\d+)\s+to\s+(\d+)\s*{unit}\s*(?:{context_after})",
+        rf"(?:{prefix})?(\d+)\s*\+\s*{unit}\s*(?:{context_after})",
+        rf"{prefix}(\d+)\s*\+?\s*{unit}(?:\s*(?:{context_after}))?",
+        rf"(?:{prefix})?(\d+)\s*{unit}\s*(?:{context_after})",
+        rf"(?:experience|experiencia).{{0,30}}?(?:{prefix})?(\d+)\s*\+?\s*{unit}",
     ]
-    matches: list[tuple[int, str]] = []
-    for pattern in contextual_patterns:
+    for pattern in patterns:
         for match in re.finditer(pattern, text):
-            years = int(match.group(2) if match.lastindex and match.lastindex > 1 and match.group(2) else match.group(1))
-            matches.append((years, match.group(0)))
+            minimum = int(match.group(1))
+            maximum = int(match.group(2)) if match.lastindex and match.lastindex >= 2 and match.group(2) else None
+            if minimum > 20:
+                continue
+            matches.append((minimum, maximum, match.group(0), match.start(), match.end()))
     if not matches:
         return ExperienceSignal(None, None)
-    years, phrase = max(matches, key=lambda item: item[0])
-    return ExperienceSignal(years, phrase)
+    ranges = [item for item in matches if item[1] is not None]
+    matches = [
+        item
+        for item in matches
+        if item[1] is not None or not any(ranged[3] <= item[3] and item[4] <= ranged[4] for ranged in ranges)
+    ]
+    years, maximum, phrase, _, _ = max(matches, key=lambda item: item[0])
+    return ExperienceSignal(years, phrase, maximum)
 
 
 def detect_location(job: Job) -> LocationSignal:
@@ -298,45 +357,43 @@ def detect_location(job: Job) -> LocationSignal:
     remote = _contains_any(text, REMOTE_TERMS)
     exclusions = [term for term in EXCLUSION_TERMS if term in text]
     latam_exclusion = any(term in text for term in LATAM_EXCLUDING_BRAZIL)
-    signals = []
     title_location_brazil = any(term in title_location for term in BRAZIL_TERMS)
     title_location_latam = any(term in title_location for term in LATAM_TERMS)
-    title_location_worldwide = any(term in title_location for term in WORLDWIDE_TERMS)
+    title_location_americas = any(_contains_phrase(title_location, term) for term in AMERICAS_TERMS)
+    title_location_worldwide = any(_contains_phrase(title_location, term) for term in WORLDWIDE_LOCATION_TERMS)
     title_location_foreign = any(term in f" {title_location} " for term in FOREIGN_TERMS)
     brazil = any(term in text for term in BRAZIL_TERMS)
     latam = any(term in text for term in LATAM_TERMS)
     latam_includes_brazil = any(term in text for term in LATAM_INCLUDE_BRAZIL_TERMS)
-    worldwide = any(term in text for term in WORLDWIDE_TERMS)
+    americas = any(_contains_phrase(text, term) for term in AMERICAS_TERMS)
+    worldwide = any(_contains_phrase(text, term) for term in WORLDWIDE_REMOTE_TERMS)
     foreign = any(term in f" {text} " for term in FOREIGN_TERMS)
 
-    if brazil:
-        signals.append("Brazil eligible")
-    if latam and not latam_exclusion:
-        signals.append("LATAM eligible")
-    if worldwide:
-        signals.append("Worldwide remote")
-    if remote:
-        signals.append("Remote")
-    if foreign:
-        signals.append("Foreign location")
-
     if latam_exclusion:
-        return LocationSignal(remote, False, signals, ["LATAM excluding Brazil"], LocationCategory.BRAZIL_EXCLUDED)
+        return LocationSignal(remote, False, ["LATAM excluding Brazil"], ["LATAM excluding Brazil"], LocationCategory.BRAZIL_EXCLUDED)
     if exclusions:
-        return LocationSignal(remote, False, signals, exclusions, LocationCategory.FOREIGN_RESTRICTED)
-    if title_location_foreign and not (title_location_brazil or title_location_latam or title_location_worldwide or latam_includes_brazil):
-        return LocationSignal(remote, False, signals, ["Foreign location without Brazil eligibility"], LocationCategory.FOREIGN_RESTRICTED)
+        return LocationSignal(remote, False, sorted(set(exclusions)), exclusions, LocationCategory.FOREIGN_RESTRICTED)
+    if title_location_foreign and not (
+        title_location_brazil or title_location_latam or title_location_americas or title_location_worldwide or worldwide or latam_includes_brazil
+    ):
+        if remote:
+            return LocationSignal(remote, False, ["Foreign restricted remote"], ["Foreign location with remote eligibility restricted"], LocationCategory.FOREIGN_RESTRICTED)
+        return LocationSignal(remote, False, ["Foreign on-site location"], ["Foreign location: on-site outside Brazil"], LocationCategory.FOREIGN_ONSITE)
     if latam and (latam_includes_brazil or not foreign):
-        return LocationSignal(remote, True, signals, [], LocationCategory.LATAM_INCLUDING_BRAZIL)
+        return LocationSignal(remote, True, ["LATAM remote"], [], LocationCategory.LATAM_INCLUDING_BRAZIL)
     if brazil:
-        return LocationSignal(remote, True, signals, [], LocationCategory.BRAZIL)
-    if worldwide:
-        return LocationSignal(remote, True, signals, [], LocationCategory.GLOBAL)
+        return LocationSignal(remote, True, ["Brazil-compatible location"], [], LocationCategory.BRAZIL)
+    if title_location_worldwide or worldwide:
+        return LocationSignal(remote, True, ["Worldwide remote"], [], LocationCategory.GLOBAL)
+    if americas and remote:
+        return LocationSignal(remote, True, ["Americas remote"], [], LocationCategory.AMERICAS)
     if foreign:
-        return LocationSignal(remote, False, signals, ["Foreign location without Brazil eligibility"], LocationCategory.FOREIGN_RESTRICTED)
+        if remote:
+            return LocationSignal(remote, False, ["Foreign restricted remote"], ["Foreign location with remote eligibility restricted"], LocationCategory.FOREIGN_RESTRICTED)
+        return LocationSignal(remote, False, ["Foreign on-site location"], ["Foreign location: on-site outside Brazil"], LocationCategory.FOREIGN_ONSITE)
     if remote:
-        return LocationSignal(remote, None, signals, [], LocationCategory.REMOTE_UNSCOPED)
-    return LocationSignal(remote, None, signals, [], LocationCategory.UNKNOWN)
+        return LocationSignal(remote, None, ["Remote geography unclear"], [], LocationCategory.REMOTE_UNSCOPED)
+    return LocationSignal(remote, None, [], [], LocationCategory.UNKNOWN)
 
 
 def freshness_days(job: Job, now: datetime) -> int | None:

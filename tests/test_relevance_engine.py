@@ -152,7 +152,7 @@ def test_case_n_cybersecurity_risk_engineer_brazil_is_technical_not_non_tech():
     assert "Non-tech role" not in result.negative_reasons
 
 
-def test_golden_ranking_order_for_calibration_v1_1():
+def test_golden_ranking_order_for_calibration_v1_2():
     jobs = [
         _job("Junior Backend Engineer", "Brazil", "Python PostgreSQL", Seniority.JUNIOR),
         _job("Data Engineering Internship", "Brazil", "Python SQL", Seniority.INTERN),
@@ -174,8 +174,8 @@ def test_golden_ranking_order_for_calibration_v1_1():
         "Backend Engineer",
         "Junior Frontend",
         "Senior Backend",
-        "Junior Software Engineer",
         "IT Risk Management Specialist",
+        "Junior Software Engineer",
         "Marketing Manager",
     ]
 
@@ -207,7 +207,9 @@ def test_location_signals_latam_remote_and_foreign_restrictions():
 
 def test_experience_detection_and_freshness_are_deterministic():
     assert detect_experience("Minimum 3 years of experience").years == 3
-    assert detect_experience("Required: 0-2 years experience").years == 2
+    zero_to_two = detect_experience("Required: 0-2 years experience")
+    assert zero_to_two.years == 0
+    assert zero_to_two.maximum_years == 2
     assert detect_experience("At least 10+ years of experience").years == 10
     assert detect_experience("Our team has 10 years building APIs").years is None
     old = score_job(_job("Backend Engineer", "Brazil", "Python", days_old=40), now=NOW)
@@ -215,3 +217,91 @@ def test_experience_detection_and_freshness_are_deterministic():
 
     assert new.components["freshness"] > old.components["freshness"]
     assert score_job(_job("Backend Engineer", "Brazil", "Python", days_old=1), now=NOW).score == new.score
+
+
+def test_junior_software_engineer_is_early_career_but_engineer_ii_is_not():
+    junior = score_job(_job("Junior Software Engineer", "Brazil", "Python APIs"), now=NOW)
+    level_two = score_job(_job("Software Engineer II", "Brazil", "Python APIs"), now=NOW)
+
+    assert "Early-career title" in junior.positive_reasons
+    assert "Early-career title" not in level_two.positive_reasons
+    assert "Level II/III title" in level_two.negative_reasons
+    assert "engineer i" not in level_two.matched_seniority_signals
+
+
+def test_senior_software_engineer_has_senior_signal_and_cap():
+    result = score_job(_job("Senior Software Engineer", "Brazil", "Python APIs"), now=NOW)
+
+    assert "Senior-level role" in result.negative_reasons
+    assert result.score <= 65
+
+
+def test_explicit_experience_requirements_are_contextual_and_weighted():
+    three = score_job(_job("Software Engineer", "Brazil", "3+ years in a backend role. Python."), now=NOW)
+    five = score_job(_job("Software Engineer", "Brazil", "At least 5 years of experience. Python."), now=NOW)
+
+    assert detect_experience("3+ years in a backend role").years == 3
+    assert detect_experience("Minimum 3 years of experience").years == 3
+    assert detect_experience("2-4 years of experience").years == 2
+    assert detect_experience("3 to 5 years of experience").years == 3
+    assert detect_experience("mínimo 3 anos de experiência").years == 3
+    assert detect_experience("The product has operated for 12 years").years is None
+    assert detect_experience("With 30 years of experience in digital transformation").years is None
+    assert "Requires 3+ years experience" in three.negative_reasons
+    assert "Requires 5+ years experience" in five.negative_reasons
+    assert five.score < three.score
+
+
+def test_brazil_remote_brazil_latam_worldwide_and_americas_are_eligible():
+    cases = [
+        (_job("Software Engineer", "Brazil", "Python"), LocationCategory.BRAZIL, "Brazil eligible"),
+        (_job("Software Engineer", "Remote - Brazil", "Python"), LocationCategory.BRAZIL, "Brazil eligible"),
+        (_job("Software Engineer", "Remote LATAM", "Python"), LocationCategory.LATAM_INCLUDING_BRAZIL, "LATAM includes Brazil"),
+        (_job("Software Engineer", "Remote Americas", "Python"), LocationCategory.AMERICAS, "Americas remote"),
+        (_job("Software Engineer", "Worldwide Remote", "Python"), LocationCategory.GLOBAL, "Worldwide/global remote"),
+    ]
+
+    for job, category, reason in cases:
+        assert detect_location(job).category is category
+        assert reason in score_job(job, now=NOW).positive_reasons
+
+
+def test_remote_restrictions_and_unclear_remote_are_not_brazil_eligible():
+    us_only = score_job(_job("Software Engineer", "Remote - US", "Python"), now=NOW)
+    europe_only = score_job(_job("Software Engineer", "Europe only", "Python"), now=NOW)
+    generic = score_job(_job("Software Engineer", "Remote", "Python"), now=NOW)
+
+    assert detect_location(_job("Software Engineer", "Remote - US", "")).category is LocationCategory.FOREIGN_RESTRICTED
+    assert "Foreign location with remote eligibility restricted" in us_only.negative_reasons or "remote - us" in us_only.negative_reasons
+    assert "europe only" in europe_only.negative_reasons
+    assert detect_location(_job("Software Engineer", "Remote", "")).category is LocationCategory.REMOTE_UNSCOPED
+    assert "Remote role, geography unknown" in generic.positive_reasons
+    assert "Worldwide/global remote" not in generic.positive_reasons
+
+
+def test_foreign_on_site_and_global_boilerplate_do_not_imply_worldwide_remote():
+    job = _job(
+        "Software Engineer II",
+        "Ireland",
+        "Work autonomously in a globally distributed team. 3+ years in a full-stack role. Python React TypeScript.",
+    )
+    result = score_job(job, now=NOW)
+
+    assert detect_location(job).category is LocationCategory.FOREIGN_ONSITE
+    assert "Worldwide/global remote" not in result.positive_reasons
+    assert "Foreign location: on-site outside Brazil" in result.negative_reasons
+    assert "Requires 3+ years experience" in result.negative_reasons
+    assert "Early-career title" not in result.positive_reasons
+    assert result.score <= 35
+
+
+def test_worldwide_location_is_global_but_product_boilerplate_is_not():
+    worldwide = _job("Junior Software Engineer", "Home based - Worldwide", "Python")
+    boilerplate = _job(
+        "Software Engineer Intern",
+        "San Francisco, CA",
+        "Our product helps teams work together from anywhere in the world. Python.",
+    )
+
+    assert detect_location(worldwide).category is LocationCategory.GLOBAL
+    assert detect_location(boilerplate).category is LocationCategory.FOREIGN_ONSITE

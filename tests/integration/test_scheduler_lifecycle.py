@@ -184,7 +184,7 @@ def test_due_queries_and_scheduler_once_with_fake_collector(db_session):
     assert run.items_found == 1
     assert run.items_deactivated == 0
     assert job.relevance_score is not None
-    assert job.relevance_version == "tech_early_career_br:v1.1"
+    assert job.relevance_version == "tech_early_career_br:v1.2"
 
 
 def test_due_respects_finished_at_cooldown_for_success_and_failed(db_session):
