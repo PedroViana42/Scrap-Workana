@@ -83,3 +83,36 @@ def test_list_active_by_relevance_orders_desc(db_session):
     ordered = repository.list_active_by_relevance(limit=2)
     assert ordered[0].id == high.id
 
+
+def test_list_for_rescore_uses_keyset_batches_and_can_skip_current_version(db_session):
+    sync_source_catalog(db_session)
+    db_session.commit()
+    repository = JobRepository(db_session)
+    jobs = []
+    for index in range(5):
+        job, _ = repository.upsert(
+            Job(
+                source="greenhouse",
+                external_id=f"batch-{index}",
+                title=f"Software Engineer {index}",
+                url=f"https://example.com/batch-{index}",
+            )
+        )
+        jobs.append(job)
+    jobs[1].active = False
+    jobs[2].relevance_version = "tech_early_career_br:v1.2"
+    db_session.commit()
+
+    first = repository.list_for_rescore(limit=2)
+    second = repository.list_for_rescore(after_id=first[-1].id, limit=2)
+    outdated = repository.list_for_rescore(
+        limit=10,
+        exclude_version="tech_early_career_br:v1.2",
+    )
+    active = repository.list_for_rescore(limit=10, active_only=True)
+
+    assert [job.id for job in first] == [jobs[0].id, jobs[1].id]
+    assert [job.id for job in second] == [jobs[2].id, jobs[3].id]
+    assert jobs[1].id in {job.id for job in outdated}
+    assert jobs[2].id not in {job.id for job in outdated}
+    assert jobs[1].id not in {job.id for job in active}

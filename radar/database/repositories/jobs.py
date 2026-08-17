@@ -90,10 +90,27 @@ class JobRepository:
         self.session.flush()
         return job
 
-    def list_for_rescore(self, limit: int | None = None) -> list[JobDB]:
-        statement = select(JobDB).where(JobDB.active.is_(True)).order_by(JobDB.id)
-        if limit is not None:
-            statement = statement.limit(limit)
+    def list_for_rescore(
+        self,
+        *,
+        after_id: int = 0,
+        limit: int = 500,
+        exclude_version: str | None = None,
+        active_only: bool = False,
+    ) -> list[JobDB]:
+        statement = (
+            select(JobDB)
+            .options(joinedload(JobDB.source))
+            .where(JobDB.id > after_id)
+            .order_by(JobDB.id)
+            .limit(limit)
+        )
+        if exclude_version is not None:
+            statement = statement.where(
+                or_(JobDB.relevance_version.is_(None), JobDB.relevance_version != exclude_version)
+            )
+        if active_only:
+            statement = statement.where(JobDB.active.is_(True))
         return list(self.session.scalars(statement))
 
     def list_active_by_relevance(self, limit: int = 20) -> list[JobDB]:
