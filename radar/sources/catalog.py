@@ -34,6 +34,21 @@ _SOURCES = [
         capabilities=SourceCapabilities(supports_company_boards=True),
     ),
     SourceConfig(
+        name="workable",
+        display_name="Workable",
+        content_type=ContentType.JOB,
+        collector="workable",
+        base_url="https://www.workable.com/api/accounts/{subdomain}",
+        status=SourceStatus.ACTIVE,
+        enabled=True,
+        interval_minutes=60,
+        capabilities=SourceCapabilities(
+            supports_remote=True,
+            supports_published_at=True,
+            supports_company_boards=True,
+        ),
+    ),
+    SourceConfig(
         name="remoteok",
         display_name="Remote OK",
         content_type=ContentType.JOB,

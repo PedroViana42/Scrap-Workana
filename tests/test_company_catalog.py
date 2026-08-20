@@ -48,4 +48,4 @@ def test_company_catalog_distribution_by_ats():
     assert counts["greenhouse"] >= 10
     assert counts["lever"] >= 5
     assert counts["ashby"] >= 10
-
+    assert counts["workable"] == 3
