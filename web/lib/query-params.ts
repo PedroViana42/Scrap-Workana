@@ -11,6 +11,7 @@ export const filterKeys = [
   "min_score",
   "max_score",
   "relevance_band",
+  "attainability",
   "active",
   "location",
   "technology",
@@ -20,7 +21,7 @@ export type FilterKey = (typeof filterKeys)[number];
 
 export function normalizeSearchParams(searchParams: Record<string, string | string[] | undefined>): JobSearchParams {
   const normalized: JobSearchParams = {};
-  for (const key of [...filterKeys.filter((key) => key !== "view"), "page", "page_size"] as Exclude<FilterKey, "view">[]) {
+  for (const key of [...filterKeys.filter((key) => key !== "view" && key !== "attainability"), "page", "page_size"] as Exclude<FilterKey, "view" | "attainability">[]) {
     const value = searchParams[key];
     if (Array.isArray(value)) {
       normalized[key] = value[0];
@@ -28,6 +29,8 @@ export function normalizeSearchParams(searchParams: Record<string, string | stri
       normalized[key] = value;
     }
   }
+  const rawAttainability = Array.isArray(searchParams.attainability) ? searchParams.attainability[0] : searchParams.attainability;
+  if (rawAttainability === "HIGH" || rawAttainability === "MEDIUM" || rawAttainability === "LOW") normalized.attainability = rawAttainability;
   const rawView = Array.isArray(searchParams.view) ? searchParams.view[0] : searchParams.view;
   if (rawView === "for-me" || rawView === "brazil" || rawView === "remote" || rawView === "goiania") normalized.view = rawView;
   return normalized;
@@ -70,12 +73,16 @@ export function filterLabel(key: FilterKey, value: string): string {
     min_score: "Score >=",
     max_score: "Score <=",
     relevance_band: "Faixa",
+    attainability: "Nivel da oportunidade",
     active: "Ativa",
     location: "Local",
     technology: "Tecnologia",
   };
   if (key === "view") return value === "for-me" ? "Para mim" : value === "brazil" ? "Brasil" : value === "remote" ? "Remotas" : "Goiania";
   if (key === "remote") return value === "true" ? "Remoto" : "Nao remoto";
+  if (key === "attainability") {
+    return `Nivel: ${{ HIGH: "Mais acessivel", MEDIUM: "Stretch", LOW: "Avancada" }[value] ?? value}`;
+  }
   if (key === "min_score" || key === "max_score") return `${labels[key]} ${value}`;
   return `${labels[key]}: ${value}`;
 }

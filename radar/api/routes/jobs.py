@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from math import ceil
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -28,6 +29,10 @@ def list_jobs(
     active: bool | None = True,
     location: str | None = None,
     technology: str | None = Query(default=None, description="Single technology filter; exact match"),
+    attainability: Literal["HIGH", "MEDIUM", "LOW"] | None = Query(
+        default=None,
+        description="Professional attainability level",
+    ),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     session: Session = Depends(get_session),
@@ -48,6 +53,7 @@ def list_jobs(
             active=active,
             location=location,
             technology=technology,
+            attainability=attainability,
         ),
         page=page,
         page_size=page_size,

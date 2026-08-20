@@ -54,6 +54,12 @@ export function JobFilters({ params, sources }: { params: JobSearchParams; sourc
 function FilterControls({ params, sources }: { params: JobSearchParams; sources: SourceItem[] }) {
   return (
     <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap">
+      <Select
+        name="attainability"
+        label="Nivel da oportunidade"
+        value={params.attainability}
+        options={[["", "Nivel da oportunidade"], ["HIGH", "Mais acessivel"], ["MEDIUM", "Stretch"], ["LOW", "Avancada"]]}
+      />
       <Select name="remote" label="Remote" value={params.remote} options={[["", "Remote"], ["true", "Remoto"], ["false", "Nao remoto"]]} />
       <Select
         name="seniority"

@@ -3,6 +3,7 @@ import { ScoreBadge } from "@/components/jobs/score-badge";
 import { TechnologyLabels } from "@/components/jobs/technology-labels";
 import { JobDescription } from "@/components/jobs/job-description";
 import { RelevanceExplanation } from "@/components/jobs/relevance-explanation";
+import { AttainabilityExplanation } from "@/components/jobs/attainability-explanation";
 import { formatEmploymentType, formatLongDate, formatRemoteType, formatSeniority } from "@/lib/formatters";
 import { formatJobLocation } from "@/lib/job-location";
 import type { JobDetail as JobDetailType } from "@/lib/types";
@@ -42,6 +43,8 @@ export function JobDetail({ job }: { job: JobDetailType }) {
           {job.relevance_reasons?.positive?.length || job.relevance_reasons?.negative?.length ? (
             <section className="panel p-4"><RelevanceExplanation reasons={job.relevance_reasons} /></section>
           ) : null}
+
+          {job.attainability ? <section className="panel p-4"><AttainabilityExplanation attainability={job.attainability} /></section> : null}
 
           <section className="panel p-4">
             <h2 className="text-lg font-semibold">Sobre a vaga</h2>

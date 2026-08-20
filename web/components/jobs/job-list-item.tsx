@@ -4,6 +4,7 @@ import { formatJobLocation } from "@/lib/job-location";
 import type { JobListItem as JobListItemType } from "@/lib/types";
 import { ScoreBadge } from "@/components/jobs/score-badge";
 import { TechnologyLabels } from "@/components/jobs/technology-labels";
+import { AttainabilityBadge } from "@/components/jobs/attainability-badge";
 
 export function JobListItem({ job }: { job: JobListItemType }) {
   const location = formatJobLocation(job);
@@ -29,6 +30,7 @@ export function JobListItem({ job }: { job: JobListItemType }) {
       </div>
       <div className="flex items-center justify-between md:block">
         <ScoreBadge score={job.relevance_score} band={job.relevance_band} compact />
+        {job.attainability ? <div className="mt-2"><AttainabilityBadge level={job.attainability.level} /></div> : null}
         <Link className="rounded-md border border-[var(--border)] px-2 py-1 text-sm text-[var(--muted)] hover:bg-white md:hidden" href={`/jobs/${job.id}`}>
           Abrir
         </Link>

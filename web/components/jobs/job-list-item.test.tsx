@@ -20,6 +20,7 @@ const job: Job = {
   last_seen_at: "2026-08-14T10:10:00Z",
   relevance_score: 96,
   relevance_band: "excellent",
+  attainability: { level: "HIGH", positive: ["Explicit junior role"], warnings: [], negative: [] },
 };
 
 describe("JobListItem", () => {
@@ -31,6 +32,7 @@ describe("JobListItem", () => {
     expect(screen.getByText("Tempo integral")).toBeInTheDocument();
     expect(screen.getByText("+1")).toBeInTheDocument();
     expect(screen.getByText("96")).toBeInTheDocument();
+    expect(screen.getByText(/Perfil de entrada/)).toBeInTheDocument();
   });
 
   it("omits unavailable placeholders", () => {
