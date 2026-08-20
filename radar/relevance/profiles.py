@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
 
-SCORING_VERSION = "tech_early_career_br:v1.2"
+SCORING_VERSION = "tech_early_career_br:v1.3"
 
 
 @dataclass(frozen=True)

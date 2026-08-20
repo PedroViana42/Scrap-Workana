@@ -43,7 +43,10 @@ def _job(**overrides):
         "last_seen_at": NOW,
         "relevance_score": 88,
         "relevance_band": "strong",
-        "relevance_reasons": {"role": ["software"]},
+        "relevance_reasons": {
+            "role": ["software"],
+            "attainability": {"level": "HIGH", "positive": ["Explicit junior role"], "warnings": [], "negative": []},
+        },
     }
     values.update(overrides)
     return SimpleNamespace(**values)
@@ -107,6 +110,7 @@ def test_jobs_pagination_and_sort_contract(monkeypatch):
     assert body["total"] == 42
     assert body["pages"] == 5
     assert len(body["items"]) == 2
+    assert body["items"][0]["attainability"]["level"] == "HIGH"
     assert FakeJobRepository.last_page == 2
     assert FakeJobRepository.last_page_size == 10
 
@@ -161,6 +165,17 @@ def test_job_detail_excludes_raw_data(monkeypatch):
     assert body["id"] == 1
     assert body["salary"]["currency"] == "USD"
     assert "raw_data" not in body
+    assert body["attainability"]["positive"] == ["Explicit junior role"]
+
+
+def test_old_relevance_payload_remains_backwards_compatible(monkeypatch):
+    monkeypatch.setattr("radar.api.routes.jobs.JobRepository", FakeJobRepository)
+    FakeJobRepository.detail = _job(relevance_reasons={"positive": ["Matched Python"]})
+
+    response = _client().get("/jobs/1")
+
+    assert response.status_code == 200
+    assert response.json()["attainability"] is None
 
 
 def test_job_detail_404(monkeypatch):
