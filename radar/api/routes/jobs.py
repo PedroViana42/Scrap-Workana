@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from radar.api.dependencies import get_session
-from radar.api.schemas.jobs import JobDetail, JobListItem, JobsPage, Salary
+from radar.api.schemas.jobs import Attainability, JobDetail, JobListItem, JobsPage, Salary
 from radar.database.models.job import JobDB
 from radar.database.repositories.jobs import JobRepository, JobSearchFilters
 
@@ -87,6 +87,19 @@ def _job_list_item(job: JobDB) -> JobListItem:
         last_seen_at=job.last_seen_at,
         relevance_score=job.relevance_score,
         relevance_band=job.relevance_band,
+        attainability=_attainability(job.relevance_reasons),
+    )
+
+
+def _attainability(reasons: dict | None) -> Attainability | None:
+    value = reasons.get("attainability") if isinstance(reasons, dict) else None
+    if not isinstance(value, dict) or value.get("level") not in {"HIGH", "MEDIUM", "LOW"}:
+        return None
+    return Attainability(
+        level=value["level"],
+        positive=value.get("positive") if isinstance(value.get("positive"), list) else [],
+        warnings=value.get("warnings") if isinstance(value.get("warnings"), list) else [],
+        negative=value.get("negative") if isinstance(value.get("negative"), list) else [],
     )
 
 

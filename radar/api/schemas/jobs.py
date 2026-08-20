@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -11,6 +11,13 @@ class Salary(BaseModel):
     min: Decimal | None = None
     max: Decimal | None = None
     currency: str | None = None
+
+
+class Attainability(BaseModel):
+    level: Literal["HIGH", "MEDIUM", "LOW"]
+    positive: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    negative: list[str] = Field(default_factory=list)
 
 
 class JobListItem(BaseModel):
@@ -30,6 +37,7 @@ class JobListItem(BaseModel):
     last_seen_at: datetime
     relevance_score: int | None
     relevance_band: str | None
+    attainability: Attainability | None = None
 
 
 class JobDetail(JobListItem):

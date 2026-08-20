@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from math import ceil
 
 from radar.models.enums import Seniority
+from radar.relevance.attainability import classify_attainability
 from radar.models.job import Job
 from radar.relevance.models import RelevanceResult, band_for_score
 from radar.relevance.profiles import JobRelevanceProfile, TECH_EARLY_CAREER_BR_PROFILE
@@ -64,6 +65,7 @@ def score_job(
 
     score = max(0, min(100, int(round(score))))
     job.technologies = technologies
+    attainability = classify_attainability(job)
 
     return RelevanceResult(
         score=score,
@@ -77,6 +79,7 @@ def score_job(
         matched_location_signals=location_signals,
         matched_seniority_signals=seniority_signals,
         components=components,
+        attainability=attainability,
     )
 
 

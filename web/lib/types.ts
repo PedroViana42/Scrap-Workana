@@ -17,6 +17,14 @@ export type JobListItem = {
   last_seen_at: string;
   relevance_score: number | null;
   relevance_band: RelevanceBand | null;
+  attainability?: Attainability | null;
+};
+
+export type Attainability = {
+  level: "HIGH" | "MEDIUM" | "LOW";
+  positive: string[];
+  warnings: string[];
+  negative: string[];
 };
 
 export type JobDetail = JobListItem & {
@@ -36,6 +44,7 @@ export type RelevanceReasons = {
   matched_technologies?: string[];
   matched_location_signals?: string[];
   matched_seniority_signals?: string[];
+  attainability?: Attainability;
   [key: string]: unknown;
 };
 

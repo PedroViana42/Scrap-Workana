@@ -38,6 +38,7 @@ def test_job_relevance_is_persisted_with_json_and_version(db_session):
     assert stored.relevance_score == result.score
     assert stored.relevance_band == result.band.value
     assert stored.relevance_reasons["positive"]
+    assert stored.relevance_reasons["attainability"]["level"] == "HIGH"
     assert stored.relevance_components["role"] >= 0
     assert stored.relevance_version == result.version
     assert stored.scored_at is not None
@@ -100,14 +101,14 @@ def test_list_for_rescore_uses_keyset_batches_and_can_skip_current_version(db_se
         )
         jobs.append(job)
     jobs[1].active = False
-    jobs[2].relevance_version = "tech_early_career_br:v1.2"
+    jobs[2].relevance_version = "tech_early_career_br:v1.3"
     db_session.commit()
 
     first = repository.list_for_rescore(limit=2)
     second = repository.list_for_rescore(after_id=first[-1].id, limit=2)
     outdated = repository.list_for_rescore(
         limit=10,
-        exclude_version="tech_early_career_br:v1.2",
+        exclude_version="tech_early_career_br:v1.3",
     )
     active = repository.list_for_rescore(limit=10, active_only=True)
 
