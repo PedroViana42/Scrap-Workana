@@ -56,10 +56,22 @@ export function isBrazilCompatibleRemote(job: Pick<JobListItem, "location" | "re
 }
 
 export function isForMe(job: JobListItem): boolean {
-  const band = String(job.relevance_band ?? "").toLowerCase();
-  if (!["excellent", "strong", "interesting"].includes(band)) return false;
+  return homeGroupForJob(job) !== null;
+}
+
+export type HomeOpportunityGroup = "grounded" | "stretch";
+
+export function isGeographicallyCompatible(job: JobListItem): boolean {
   const mode = getWorkMode(job);
   return isBrazilCompatibleRemote(job) || ((mode === "hybrid" || mode === "onsite") && isLocalRegion(job.location));
+}
+
+export function homeGroupForJob(job: JobListItem): HomeOpportunityGroup | null {
+  const band = String(job.relevance_band ?? "").toLowerCase();
+  if (!isGeographicallyCompatible(job)) return null;
+  if (job.attainability?.level === "HIGH" && ["excellent", "strong", "interesting"].includes(band)) return "grounded";
+  if (job.attainability?.level === "MEDIUM" && ["excellent", "strong"].includes(band)) return "stretch";
+  return null;
 }
 
 export function matchesJobView(job: JobListItem, view: JobView): boolean {

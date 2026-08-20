@@ -59,3 +59,16 @@ def test_relevance_band_filter_is_case_insensitive():
     )
 
     assert "lower(jobs.relevance_band)" in str(statement)
+
+
+def test_attainability_filter_uses_persisted_typed_signal():
+    repository = JobRepository(Mock())
+
+    statement = repository._apply_search_filters(
+        select(JobDB),
+        JobSearchFilters(attainability="HIGH", active=None),
+    )
+
+    compiled = str(statement)
+    assert "relevance_reasons" in compiled
+    assert "upper" in compiled.lower()

@@ -1,4 +1,4 @@
-import { matchesJobView } from "@/lib/job-location";
+import { homeGroupForJob, matchesJobView } from "@/lib/job-location";
 import type { JobDetail, JobsPage, JobSearchParams, JobView, SourceItem, StatsResponse } from "@/lib/types";
 
 const API_BASE_URL = process.env.RADAR_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -51,14 +51,32 @@ export function getJobs(params: JobSearchParams = {}): Promise<JobsPage> {
 export async function getCuratedJobs(params: JobSearchParams & { view: JobView }): Promise<JobsPage> {
   const requestedPage = Math.max(1, Number(params.page) || 1);
   const requestedPageSize = Math.max(1, Number(params.page_size) || 20);
-  const apiParams: JobSearchParams = { ...params, page: "1", page_size: "100", min_score: params.min_score ?? "70", active: params.active ?? "true" };
-  apiParams.view = undefined;
-  const first = await getJobs(apiParams);
-  const pages = [first];
-  for (let page = 2; page <= first.pages; page += 1) {
-    pages.push(await getJobs({ ...apiParams, page: String(page) }));
+  const baseParams: JobSearchParams = { ...params, page: "1", page_size: "100", active: params.active ?? "true" };
+  baseParams.view = undefined;
+  let candidates;
+  if (params.view === "for-me") {
+    const levels: Array<"HIGH" | "MEDIUM" | "LOW"> = params.attainability ? [params.attainability] : ["HIGH", "MEDIUM"];
+    const requestedMinimum = Number(params.min_score) || 0;
+    const results = await Promise.all(levels.flatMap((level) => {
+      if (level === "LOW") return [];
+      const groupMinimum = level === "HIGH" ? 60 : 75;
+      return [getAllJobs({ ...baseParams, attainability: level, min_score: String(Math.max(requestedMinimum, groupMinimum)) })];
+    }));
+    candidates = results.flatMap((result) => result);
+  } else {
+    candidates = await getAllJobs({ ...baseParams, min_score: params.min_score ?? "70" });
   }
-  const matched = pages.flatMap((page) => page.items).filter((job) => matchesJobView(job, params.view));
+  const matched = candidates
+    .filter((job) => matchesJobView(job, params.view))
+    .sort((left, right) => {
+      if (params.view === "for-me") {
+        const order = { grounded: 0, stretch: 1 } as const;
+        const groupDifference = order[homeGroupForJob(left)!] - order[homeGroupForJob(right)!];
+        if (groupDifference) return groupDifference;
+      }
+      return (right.relevance_score ?? -1) - (left.relevance_score ?? -1)
+        || Date.parse(right.published_at ?? right.last_seen_at) - Date.parse(left.published_at ?? left.last_seen_at);
+    });
   const start = (requestedPage - 1) * requestedPageSize;
   return {
     items: matched.slice(start, start + requestedPageSize),
@@ -67,6 +85,13 @@ export async function getCuratedJobs(params: JobSearchParams & { view: JobView }
     total: matched.length,
     pages: Math.max(1, Math.ceil(matched.length / requestedPageSize)),
   };
+}
+
+async function getAllJobs(params: JobSearchParams) {
+  const first = await getJobs(params);
+  if (first.pages <= 1) return first.items;
+  const remaining = await Promise.all(Array.from({ length: first.pages - 1 }, (_, index) => getJobs({ ...params, page: String(index + 2) })));
+  return [first, ...remaining].flatMap((page) => page.items);
 }
 
 export function getJob(id: string | number): Promise<JobDetail> {

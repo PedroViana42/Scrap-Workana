@@ -25,6 +25,7 @@ class JobSearchFilters:
     active: bool | None = True
     location: str | None = None
     technology: str | None = None
+    attainability: str | None = None
 
 
 @dataclass(frozen=True)
@@ -189,6 +190,11 @@ class JobRepository:
             statement = statement.where(JobDB.location.ilike(f"%{filters.location.strip()}%"))
         if filters.technology:
             statement = statement.where(JobDB.technologies.any(filters.technology))
+        if filters.attainability:
+            statement = statement.where(
+                func.upper(JobDB.relevance_reasons["attainability"]["level"].astext)
+                == filters.attainability.upper().strip()
+            )
         return statement
 
     def count_active_by_company_source(self, company_source_id: int) -> int:

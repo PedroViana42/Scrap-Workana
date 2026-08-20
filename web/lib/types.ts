@@ -88,6 +88,7 @@ export type JobSearchParams = {
   min_score?: string;
   max_score?: string;
   relevance_band?: string;
+  attainability?: "HIGH" | "MEDIUM" | "LOW";
   active?: string;
   location?: string;
   technology?: string;

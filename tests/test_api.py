@@ -122,6 +122,7 @@ def test_jobs_filters_are_forwarded(monkeypatch):
         "/jobs?q=python&source=greenhouse&company=Acme&remote=true&employment_type=full_time"
         "&seniority=junior&min_score=70&max_score=90&relevance_band=strong&active=true"
         "&location=Brazil&technology=Python"
+        "&attainability=HIGH"
     )
 
     assert response.status_code == 200
@@ -138,6 +139,13 @@ def test_jobs_filters_are_forwarded(monkeypatch):
     assert filters.active is True
     assert filters.location == "Brazil"
     assert filters.technology == "Python"
+    assert filters.attainability == "HIGH"
+
+
+def test_jobs_reject_invalid_attainability():
+    response = _client().get("/jobs?attainability=UNKNOWN")
+
+    assert response.status_code == 422
 
 
 def test_jobs_invalid_page_size_returns_422():

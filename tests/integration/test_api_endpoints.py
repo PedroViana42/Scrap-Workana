@@ -25,7 +25,7 @@ def api_client(db_session):
     return TestClient(app)
 
 
-def _seed_job(db_session, *, title="Backend Engineer", score=88, active=True, technologies=None):
+def _seed_job(db_session, *, title="Backend Engineer", score=88, active=True, technologies=None, attainability="HIGH"):
     sync_source_catalog(db_session)
     source = SourceRepository(db_session).get_by_name("greenhouse")
     job = JobDB(
@@ -50,7 +50,10 @@ def _seed_job(db_session, *, title="Backend Engineer", score=88, active=True, te
         metadata_={},
         relevance_score=score,
         relevance_band="strong",
-        relevance_reasons={"role": ["software"]},
+        relevance_reasons={
+            "role": ["software"],
+            "attainability": {"level": attainability, "positive": [], "warnings": [], "negative": []},
+        },
     )
     db_session.add(job)
     db_session.commit()
@@ -72,6 +75,17 @@ def test_api_jobs_filters_and_detail_use_database(api_client, db_session):
     assert detail.status_code == 200
     assert detail.json()["description"] == "Python SQL APIs"
     assert "raw_data" not in detail.json()
+
+
+def test_api_filters_jobs_by_attainability(api_client, db_session):
+    high = _seed_job(db_session, title="Junior Backend Engineer", attainability="HIGH")
+    _seed_job(db_session, title="Senior Backend Engineer", attainability="LOW")
+
+    response = api_client.get("/jobs?attainability=HIGH")
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["items"][0]["id"] == high.id
 
 
 def test_api_stats_use_database(api_client, db_session):

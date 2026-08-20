@@ -3,7 +3,8 @@ import { activeFilters, hrefWithParams, normalizeSearchParams, removeFilterHref 
 
 describe("query params", () => {
   it("normalizes supported params and ignores unknown keys", () => {
-    expect(normalizeSearchParams({ q: "python", page: ["2"], ignored: "x" })).toEqual({ q: "python", page: "2" });
+    expect(normalizeSearchParams({ q: "python", page: ["2"], attainability: "HIGH", ignored: "x" })).toEqual({ q: "python", page: "2", attainability: "HIGH" });
+    expect(normalizeSearchParams({ attainability: "UNKNOWN" })).toEqual({});
   });
 
   it("creates hrefs from active params and updates", () => {
@@ -16,5 +17,9 @@ describe("query params", () => {
 
   it("keeps default active=true out of filter chips", () => {
     expect(activeFilters({ active: "true", technology: "Python" })).toEqual([{ key: "technology", label: "Tecnologia: Python", value: "Python" }]);
+  });
+
+  it("uses a human label for attainability", () => {
+    expect(activeFilters({ attainability: "MEDIUM" })).toEqual([{ key: "attainability", label: "Nivel: Stretch", value: "MEDIUM" }]);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatJobLocation, isForMe, isLocalRegion, matchesJobView, remoteEligibility } from "@/lib/job-location";
+import { formatJobLocation, homeGroupForJob, isForMe, isLocalRegion, matchesJobView, remoteEligibility } from "@/lib/job-location";
 import type { JobListItem } from "@/lib/types";
 
 const base: JobListItem = {
@@ -7,6 +7,7 @@ const base: JobListItem = {
   location: null, remote: false, remote_type: "unknown", employment_type: "full_time", seniority: "junior",
   technologies: ["Python"], published_at: null, first_seen_at: "2026-08-20T00:00:00Z", last_seen_at: "2026-08-20T00:00:00Z",
   relevance_score: 80, relevance_band: "STRONG",
+  attainability: { level: "HIGH", positive: [], warnings: [], negative: [] },
 };
 
 const job = (location: string, remote_type: string, remote = remote_type === "remote") => ({ ...base, location, remote_type, remote });
@@ -58,5 +59,21 @@ describe("job geography", () => {
     expect(isForMe(candidate)).toBe(false);
     expect(matchesJobView(candidate, "remote")).toBe(false);
     expect(formatJobLocation(candidate)).toContain("Remoto · restrito");
+  });
+
+  it.each([
+    ["HIGH", "interesting", "grounded"],
+    ["HIGH", "low", null],
+    ["MEDIUM", "strong", "stretch"],
+    ["MEDIUM", "interesting", null],
+    ["LOW", "excellent", null],
+  ] as const)("classifies %s / %s for the Home", (level, relevance_band, expected) => {
+    const candidate = { ...job("Remote Brazil", "remote"), relevance_band, attainability: { level, positive: [], warnings: [], negative: [] } };
+    expect(homeGroupForJob(candidate)).toBe(expected);
+  });
+
+  it("excludes LOW from Para mim even with an excellent score", () => {
+    const candidate = { ...job("Worldwide", "remote"), relevance_band: "excellent", attainability: { level: "LOW" as const, positive: [], warnings: [], negative: [] } };
+    expect(isForMe(candidate)).toBe(false);
   });
 });
