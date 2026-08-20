@@ -4,7 +4,7 @@ import { Pagination } from "@/components/jobs/pagination";
 import { ErrorState } from "@/components/ui/error-state";
 import { formatNumber } from "@/lib/formatters";
 import { normalizeSearchParams } from "@/lib/query-params";
-import { getJobs, getSources } from "@/lib/radar-api";
+import { getCuratedJobs, getJobs, getSources } from "@/lib/radar-api";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +28,7 @@ export default async function JobsPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-5">
-      <section className="grid gap-4 lg:grid-cols-[260px_1fr] lg:items-end">
+      <section className="space-y-4">
         <div>
           <h1 className="text-2xl font-semibold">Vagas</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">{formatNumber(jobs.total)} oportunidades encontradas</p>
@@ -50,7 +50,7 @@ export default async function JobsPage({ searchParams }: PageProps) {
 
 async function loadJobsData(params: ReturnType<typeof normalizeSearchParams>) {
   try {
-    return await Promise.all([getJobs(params), getSources()]);
+    return await Promise.all([params.view ? getCuratedJobs({ ...params, view: params.view }) : getJobs(params), getSources()]);
   } catch {
     return null;
   }

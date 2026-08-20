@@ -23,7 +23,7 @@ const job: Job = {
 };
 
 describe("JobListItem", () => {
-  it("renders a dense job row with core fields", () => {
+  it("renders a concise remote job card with core fields", () => {
     render(<JobListItem job={job} />);
     expect(screen.getByRole("link", { name: "Backend Engineer" })).toHaveAttribute("href", "/jobs/1");
     expect(screen.getByText("Nubank")).toBeInTheDocument();
@@ -31,5 +31,20 @@ describe("JobListItem", () => {
     expect(screen.getByText("Tempo integral")).toBeInTheDocument();
     expect(screen.getByText("+1")).toBeInTheDocument();
     expect(screen.getByText("96")).toBeInTheDocument();
+  });
+
+  it("omits unavailable placeholders", () => {
+    render(<JobListItem job={{ ...job, location: null, remote: false, remote_type: "unknown", employment_type: "unknown", published_at: null }} />);
+    expect(screen.queryByText("Nao informado")).not.toBeInTheDocument();
+    expect(screen.queryByText(/N\/A/)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["hybrid", "Hibrido"],
+    ["onsite", "Presencial"],
+  ])("renders a Goiania %s job", (remoteType, label) => {
+    render(<JobListItem job={{ ...job, location: "Goiânia, GO", remote: false, remote_type: remoteType }} />);
+    expect(screen.getByText("Goiânia, GO")).toBeInTheDocument();
+    expect(screen.getByText(label)).toBeInTheDocument();
   });
 });

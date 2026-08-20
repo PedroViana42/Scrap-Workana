@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { JobSearchParams, SourceItem } from "@/lib/types";
+import { JobShortcuts } from "@/components/jobs/job-shortcuts";
 import { activeFilters, hrefWithParams, removeFilterHref } from "@/lib/query-params";
 
 export function JobFilters({ params, sources }: { params: JobSearchParams; sources: SourceItem[] }) {
@@ -22,12 +23,16 @@ export function JobFilters({ params, sources }: { params: JobSearchParams; sourc
             Buscar
           </button>
         </div>
-        <details className="[&>div]:hidden [&[open]>div]:block md:[&>div]:block">
-          <summary className="inline-flex h-9 cursor-pointer items-center rounded-md border border-[var(--border)] bg-white px-3 text-sm font-medium md:hidden">Filtros</summary>
-          <div className="mt-3 md:mt-0">
+        <div className="flex items-center justify-between gap-3">
+          <JobShortcuts active={params.view} />
+        </div>
+        <details className="[&>div]:hidden [&[open]>div]:block">
+          <summary className="inline-flex h-9 cursor-pointer items-center rounded-md border border-[var(--border)] bg-white px-3 text-sm font-medium">+ Filtros</summary>
+          <div className="mt-3">
             <FilterControls params={params} sources={sources} />
           </div>
         </details>
+        {params.view ? <input type="hidden" name="view" value={params.view} /> : null}
         <input type="hidden" name="page" value="1" />
       </form>
       {filters.length > 0 ? (
