@@ -34,6 +34,12 @@ def test_source_repository_get_by_name_and_list_enabled(db_session):
     assert greenhouse is not None
     assert greenhouse.content_type == ContentType.JOB.value
     assert greenhouse.enabled is True
-    assert {source.name for source in enabled} == {"greenhouse", "lever", "ashby", "workable"}
+    assert {source.name for source in enabled} == {
+        "greenhouse",
+        "lever",
+        "ashby",
+        "workable",
+        "smartrecruiters",
+    }
     assert sum(1 for source in sources if source.content_type == "job") == 10
     assert sum(1 for source in sources if source.content_type == "deal") == 4

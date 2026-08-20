@@ -324,9 +324,10 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser("sync-sources")
     subparsers.add_parser("sync-companies")
     validate_parser = subparsers.add_parser("validate-companies")
-    validate_parser.add_argument("--source", choices=["greenhouse", "lever", "ashby"])
+    collector_sources = ["greenhouse", "lever", "ashby", "workable", "smartrecruiters"]
+    validate_parser.add_argument("--source", choices=collector_sources)
     collect_parser = subparsers.add_parser("collect")
-    collect_parser.add_argument("--source", choices=["greenhouse", "lever", "ashby"])
+    collect_parser.add_argument("--source", choices=collector_sources)
     collect_parser.add_argument("--company")
     collect_parser.add_argument("--identifier")
     collect_parser.add_argument("--company-source-id", type=int)

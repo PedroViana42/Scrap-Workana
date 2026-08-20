@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
@@ -9,6 +10,11 @@ from radar.collectors.jobs.ashby import AshbyCollector, extract_salary, map_ashb
 from radar.collectors.jobs.greenhouse import GreenhouseCollector
 from radar.collectors.jobs.lever import LeverCollector
 from radar.collectors.jobs.parsing import normalize_employment_type, normalize_remote_type
+from radar.collectors.jobs.smartrecruiters import (
+    SmartRecruitersCollector,
+    format_smartrecruiters_location,
+    map_smartrecruiters_remote_type,
+)
 from radar.collectors.jobs.workable import WorkableCollector, format_workable_location, map_workable_remote_type
 from radar.http import HTTPClientError
 from radar.models import EmploymentType, RemoteType
@@ -208,6 +214,194 @@ def test_workable_collector_wraps_http_failures(message):
     collector = WorkableCollector(
         CompanySource("Example", "workable", "missing"),
         FakeHTTPClient(error=HTTPClientError(message)),
+    )
+
+    with pytest.raises(CollectorHTTPError, match=message):
+        collector.collect()
+
+
+class SmartRecruitersHTTPClient:
+    def __init__(self, list_payloads, details):
+        self.list_payloads = list_payloads
+        self.details = details
+        self.calls = []
+
+    def get_json(self, url, params=None, headers=None):
+        self.calls.append((url, params, headers))
+        if url.endswith("/postings"):
+            return self.list_payloads[params["offset"]]
+        return self.details[url.rsplit("/", 1)[-1]]
+
+
+def _smartrecruiters_collector(http, metadata=None):
+    return SmartRecruitersCollector(
+        CompanySource("Example", "smartrecruiters", "Example", metadata=metadata or {}),
+        http,
+        request_interval_seconds=0,
+    )
+
+
+def test_smartrecruiters_collector_maps_listing_and_details():
+    listing = _load("smartrecruiters_postings.json")
+    details = {item["id"]: item for item in _load("smartrecruiters_details.json")}
+    http = SmartRecruitersHTTPClient({0: listing}, details)
+
+    result = _smartrecruiters_collector(http).collect()
+    remote, hybrid, onsite = [item.job for item in result.jobs]
+
+    assert result.items_found == 3
+    assert result.metadata["complete_snapshot"] is True
+    assert result.metadata["collection_mode"] == "full"
+    assert result.metadata["requests"] == 4
+    assert http.calls[0][1] == {
+        "destination": "PUBLIC",
+        "limit": 100,
+        "offset": 0,
+        "country": "br",
+    }
+    assert remote.external_id == "uuid-1"
+    assert remote.title == "Backend Developer Junior"
+    assert remote.company == "Example Brazil"
+    assert remote.location == "São Carlos, SP, Brazil"
+    assert remote.remote_type is RemoteType.REMOTE
+    assert remote.employment_type is EmploymentType.FULL_TIME
+    assert remote.published_at is not None
+    assert remote.url.endswith("backend-developer-junior")
+    assert "Descrição da vaga\nConstrua APIs em Python." in remote.description
+    assert "Qualificações\n0-1 anos de experiência" in remote.description
+    assert "Informações adicionais\nMentoria disponível." in remote.description
+    assert remote.metadata["application_url"].endswith("?oga=true")
+    assert remote.metadata["experience"] == "Entry Level"
+    assert remote.metadata["job_id"] == "job-1"
+    assert remote.metadata["job_ad_id"] == "ad-1"
+    assert result.jobs[0].raw_data["uuid"] == "uuid-1"
+    assert hybrid.remote_type is RemoteType.HYBRID
+    assert hybrid.employment_type is EmploymentType.INTERNSHIP
+    assert onsite.remote_type is RemoteType.ONSITE
+    assert onsite.description is None
+
+
+def test_smartrecruiters_location_and_modality_are_conservative():
+    assert format_smartrecruiters_location({"city": "Goiânia", "country": "br"}) == "Goiânia, Brazil"
+    assert format_smartrecruiters_location({"region": "SP"}) == "SP"
+    assert format_smartrecruiters_location(None) is None
+    assert map_smartrecruiters_remote_type({"remote": True}) is RemoteType.REMOTE
+    assert map_smartrecruiters_remote_type({"remote": False, "hybrid": True}) is RemoteType.HYBRID
+    assert map_smartrecruiters_remote_type({"locationType": "ONSITE"}) is RemoteType.ONSITE
+    assert map_smartrecruiters_remote_type(
+        {"remote": False, "hybrid": False, "city": "Campinas"}
+    ) is RemoteType.ONSITE
+    assert map_smartrecruiters_remote_type({"remote": False}) is RemoteType.UNKNOWN
+
+
+def test_smartrecruiters_collector_paginates_more_than_one_hundred_and_deduplicates():
+    first = [{"id": f"posting-{index}", "uuid": f"uuid-{index}"} for index in range(100)]
+    second = [{"id": "posting-100", "uuid": "uuid-100"}, first[0]]
+    details = {
+        item["id"]: {
+            **item,
+            "name": f"Job {item['id']}",
+            "postingUrl": f"https://jobs.smartrecruiters.com/Example/{item['id']}",
+            "active": True,
+        }
+        for item in first + second
+    }
+    http = SmartRecruitersHTTPClient(
+        {
+            0: {"totalFound": 102, "content": first},
+            100: {"totalFound": 102, "content": second},
+        },
+        details,
+    )
+
+    result = _smartrecruiters_collector(http).collect()
+
+    assert result.items_found == 101
+    assert len({item.job.external_id for item in result.jobs}) == 101
+    listing_calls = [call for call in http.calls if call[0].endswith("/postings")]
+    assert [call[1]["offset"] for call in listing_calls] == [0, 100]
+
+
+def test_smartrecruiters_incremental_uses_released_after_and_is_not_complete():
+    details = {item["id"]: item for item in _load("smartrecruiters_details.json")}
+    http = SmartRecruitersHTTPClient(
+        {0: {"totalFound": 1, "content": [{"id": "posting-1", "uuid": "uuid-1"}]}},
+        details,
+    )
+    metadata = {
+        "_last_full_reconciliation_at": "2026-08-20T10:00:00+00:00",
+        "_last_successful_collection_at": "2026-08-20T11:00:00+00:00",
+    }
+    collector = SmartRecruitersCollector(
+        CompanySource("Example", "smartrecruiters", "Example", metadata=metadata),
+        http,
+        request_interval_seconds=0,
+        now=lambda: datetime(2026, 8, 20, 12, tzinfo=timezone.utc),
+    )
+
+    result = collector.collect()
+
+    assert result.metadata["collection_mode"] == "incremental"
+    assert result.metadata["complete_snapshot"] is False
+    assert http.calls[0][1]["releasedAfter"] == "2026-08-20T10:55:00+00:00"
+
+
+def test_smartrecruiters_reconciles_after_configured_interval():
+    http = SmartRecruitersHTTPClient({0: {"totalFound": 0, "content": []}}, {})
+    metadata = {
+        "_last_full_reconciliation_at": "2026-08-19T11:00:00+00:00",
+        "_last_successful_collection_at": "2026-08-20T11:00:00+00:00",
+        "reconciliation_interval_hours": 24,
+    }
+    collector = SmartRecruitersCollector(
+        CompanySource("Example", "smartrecruiters", "Example", metadata=metadata),
+        http,
+        request_interval_seconds=0,
+        now=lambda: datetime(2026, 8, 20, 12, tzinfo=timezone.utc),
+    )
+
+    result = collector.collect()
+
+    assert result.items_found == 0
+    assert result.metadata["collection_mode"] == "full"
+    assert result.metadata["complete_snapshot"] is True
+    assert "releasedAfter" not in http.calls[0][1]
+
+
+@pytest.mark.parametrize("payload", [None, [], {}, {"content": []}, {"totalFound": 1, "content": {}}])
+def test_smartrecruiters_collector_rejects_invalid_list_payload(payload):
+    collector = _smartrecruiters_collector(FakeHTTPClient(payload))
+
+    with pytest.raises(CollectorParseError):
+        collector.collect()
+
+
+def test_smartrecruiters_collector_rejects_incomplete_pagination():
+    collector = _smartrecruiters_collector(
+        SmartRecruitersHTTPClient({0: {"totalFound": 1, "content": []}}, {})
+    )
+
+    with pytest.raises(CollectorParseError, match="pagination ended"):
+        collector.collect()
+
+
+def test_smartrecruiters_collector_rejects_invalid_detail_payload():
+    http = SmartRecruitersHTTPClient(
+        {0: {"totalFound": 1, "content": [{"id": "posting-1"}]}},
+        {"posting-1": []},
+    )
+
+    with pytest.raises(CollectorParseError, match="detail must be an object"):
+        _smartrecruiters_collector(http).collect()
+
+
+@pytest.mark.parametrize(
+    "message",
+    ["timeout", "HTTP 404 for missing tenant", "HTTP 429", "HTTP 500"],
+)
+def test_smartrecruiters_collector_wraps_http_failures(message):
+    collector = _smartrecruiters_collector(
+        FakeHTTPClient(error=HTTPClientError(message))
     )
 
     with pytest.raises(CollectorHTTPError, match=message):

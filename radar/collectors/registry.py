@@ -44,12 +44,14 @@ def create_default_registry() -> CollectorRegistry:
     from radar.collectors.jobs.ashby import AshbyCollector
     from radar.collectors.jobs.greenhouse import GreenhouseCollector
     from radar.collectors.jobs.lever import LeverCollector
+    from radar.collectors.jobs.smartrecruiters import SmartRecruitersCollector
     from radar.collectors.jobs.workable import WorkableCollector
 
     registry = CollectorRegistry()
     registry.register(GreenhouseCollector.source_name, GreenhouseCollector)
     registry.register(LeverCollector.source_name, LeverCollector)
     registry.register(AshbyCollector.source_name, AshbyCollector)
+    registry.register(SmartRecruitersCollector.source_name, SmartRecruitersCollector)
     registry.register(WorkableCollector.source_name, WorkableCollector)
     return registry
 

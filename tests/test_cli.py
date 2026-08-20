@@ -21,3 +21,13 @@ def test_rescore_parser_defaults_to_batched_all_job_processing():
     assert args.dry_run is True
     assert args.only_outdated is True
     assert args.active_only is False
+
+
+def test_collect_parser_accepts_all_implemented_ats_collectors():
+    parser = build_parser()
+
+    for source in ["greenhouse", "lever", "ashby", "workable", "smartrecruiters"]:
+        args = parser.parse_args(
+            ["collect", "--source", source, "--company", "Example", "--identifier", "example"]
+        )
+        assert args.source == source

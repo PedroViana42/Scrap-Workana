@@ -64,6 +64,42 @@ class FailingCollector(BaseCollector[CollectorResult]):
         raise CollectorHTTPError("temporary failure")
 
 
+class IncrementalSequenceCollector(SequenceCollector):
+    source_name = "smartrecruiters"
+    supports_incremental_collection = True
+    batches: list[tuple[list[str], bool]] = []
+    seen_metadata: list[dict] = []
+
+    def collect(self) -> CollectorResult:
+        self.seen_metadata.append(dict(self.company_source.metadata))
+        batch, complete_snapshot = self.batches.pop(0)
+        jobs = [
+            CollectedJob(
+                job=Job(
+                    source=self.source_name,
+                    external_id=external_id,
+                    title=f"Backend Engineer {external_id}",
+                    company=self.company_source.company_name,
+                    description="Python PostgreSQL",
+                    url=f"https://example.com/{external_id}",
+                    remote_type=RemoteType.REMOTE,
+                    collected_at=datetime.now(timezone.utc),
+                ),
+                raw_data={"id": external_id},
+            )
+            for external_id in batch
+        ]
+        return CollectorResult(
+            source_name=self.source_name,
+            company_source=self.company_source,
+            jobs=jobs,
+            metadata={
+                "complete_snapshot": complete_snapshot,
+                "collection_mode": "full" if complete_snapshot else "incremental",
+            },
+        )
+
+
 def _registry(collector_cls):
     registry = CollectorRegistry()
     registry.register("greenhouse", collector_cls)
@@ -73,6 +109,14 @@ def _registry(collector_cls):
 def _sync_company(db_session) -> CompanySource:
     sync_source_catalog(db_session)
     company_source = CompanySource("Example", "greenhouse", "example-board")
+    CompanySourceRepository(db_session).upsert(company_source)
+    db_session.commit()
+    return company_source
+
+
+def _sync_smartrecruiters_company(db_session) -> CompanySource:
+    sync_source_catalog(db_session)
+    company_source = CompanySource("Example", "smartrecruiters", "Example")
     CompanySourceRepository(db_session).upsert(company_source)
     db_session.commit()
     return company_source
@@ -164,6 +208,38 @@ def test_failed_run_does_not_advance_lifecycle(db_session):
 
     assert second_success.items_deactivated == 0
     assert job.active is True
+
+
+def test_incremental_runs_never_deactivate_and_only_full_runs_advance_lifecycle(db_session):
+    company_source = _sync_smartrecruiters_company(db_session)
+    IncrementalSequenceCollector.batches = [
+        (["a", "b"], True),
+        (["b"], False),
+        (["b"], True),
+        (["b"], True),
+    ]
+    IncrementalSequenceCollector.seen_metadata = []
+    registry = CollectorRegistry()
+    registry.register("smartrecruiters", IncrementalSequenceCollector)
+    service = JobCollectionService(db_session, registry=registry)
+
+    first = service.collect_and_persist(company_source)
+    incremental = service.collect_and_persist(company_source)
+    first_reconciliation = service.collect_and_persist(company_source)
+    job_after_incremental = db_session.query(JobDB).filter(JobDB.external_id == "a").one()
+    assert job_after_incremental.active is True
+    second_reconciliation = service.collect_and_persist(company_source)
+
+    assert first.items_deactivated == 0
+    assert incremental.items_deactivated == 0
+    assert first_reconciliation.items_deactivated == 0
+    assert second_reconciliation.items_deactivated == 1
+    assert job_after_incremental.active is False
+    runs = db_session.query(ScrapeRunDB).order_by(ScrapeRunDB.id).all()
+    assert [run.metadata_["complete_snapshot"] for run in runs] == [True, False, True, True]
+    assert "_last_successful_collection_at" not in IncrementalSequenceCollector.seen_metadata[0]
+    assert "_last_full_reconciliation_at" in IncrementalSequenceCollector.seen_metadata[1]
+    assert "_last_successful_collection_at" in IncrementalSequenceCollector.seen_metadata[1]
 
 
 def test_due_queries_and_scheduler_once_with_fake_collector(db_session):

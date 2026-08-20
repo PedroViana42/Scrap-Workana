@@ -49,3 +49,16 @@ def test_company_catalog_distribution_by_ats():
     assert counts["lever"] >= 5
     assert counts["ashby"] >= 10
     assert counts["workable"] == 3
+    assert counts["smartrecruiters"] == 3
+
+
+def test_smartrecruiters_catalog_is_brazil_scoped_and_explicit():
+    companies = get_company_catalog("smartrecruiters")
+
+    assert [company.external_identifier for company in companies] == [
+        "Experian",
+        "BoschGroup",
+        "MSXInternational",
+    ]
+    assert all(company.metadata["country_filter"] == "br" for company in companies)
+    assert all(company.metadata["reconciliation_interval_hours"] == 24 for company in companies)
