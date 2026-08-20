@@ -58,6 +58,7 @@ def test_catalog_contains_job_and_deal_sources():
         "gupy",
         "programathor",
         "smartrecruiters",
+        "workable",
     }
     assert deal_sources == {"mercadolivre", "amazon", "kabum", "pichau"}
 
@@ -95,7 +96,7 @@ def test_planned_sources_are_disabled_and_have_no_collector():
 
 
 def test_implemented_ats_sources_are_active_and_registered_by_name():
-    for name in ["greenhouse", "lever", "ashby"]:
+    for name in ["greenhouse", "lever", "ashby", "workable"]:
         source = get_source(name)
         assert source.status is SourceStatus.ACTIVE
         assert source.enabled is True

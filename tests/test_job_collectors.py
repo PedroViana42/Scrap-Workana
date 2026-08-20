@@ -9,6 +9,7 @@ from radar.collectors.jobs.ashby import AshbyCollector, extract_salary, map_ashb
 from radar.collectors.jobs.greenhouse import GreenhouseCollector
 from radar.collectors.jobs.lever import LeverCollector
 from radar.collectors.jobs.parsing import normalize_employment_type, normalize_remote_type
+from radar.collectors.jobs.workable import WorkableCollector, format_workable_location, map_workable_remote_type
 from radar.http import HTTPClientError
 from radar.models import EmploymentType, RemoteType
 from radar.sources.models import CompanySource
@@ -126,3 +127,88 @@ def test_collectors_wrap_http_errors():
     with pytest.raises(CollectorHTTPError):
         collector.collect()
 
+
+def test_workable_collector_maps_public_account_payload():
+    http = FakeHTTPClient(_load("workable_jobs.json"))
+    collector = WorkableCollector(CompanySource("Example", "workable", "example"), http)
+
+    result = collector.collect()
+    remote, hybrid, onsite = [collected.job for collected in result.jobs]
+
+    assert result.items_found == 3
+    assert result.metadata == {"subdomain": "example", "account_name": "Example Company"}
+    assert http.calls == [("https://www.workable.com/api/accounts/example", {"details": "true"}, None)]
+    assert remote.external_id == "ABC123"
+    assert remote.title == "Backend Engineer"
+    assert remote.company == "Example"
+    assert remote.description == "Build Python APIs."
+    assert remote.location == "Goiânia, GO, Brazil"
+    assert remote.remote_type is RemoteType.REMOTE
+    assert remote.employment_type is EmploymentType.FULL_TIME
+    assert remote.published_at is not None
+    assert remote.metadata["experience"] == "Entry level"
+    assert remote.metadata["function"] == "Engineering"
+    assert remote.metadata["department"] == "Platform"
+    assert remote.metadata["application_url"].endswith("/apply")
+    assert result.jobs[0].raw_data["shortcode"] == "ABC123"
+    assert hybrid.remote_type is RemoteType.HYBRID
+    assert hybrid.employment_type is EmploymentType.INTERNSHIP
+    assert onsite.remote_type is RemoteType.ONSITE
+    assert onsite.description is None
+    assert onsite.location == "GO, Brazil"
+    assert onsite.employment_type is EmploymentType.UNKNOWN
+    assert onsite.metadata["experience"] is None
+
+
+def test_workable_remote_mapping_is_conservative():
+    assert map_workable_remote_type("remote", False) is RemoteType.REMOTE
+    assert map_workable_remote_type("hybrid", True) is RemoteType.HYBRID
+    assert map_workable_remote_type("on_site", True) is RemoteType.ONSITE
+    assert map_workable_remote_type(None, True) is RemoteType.REMOTE
+    assert map_workable_remote_type(None, False) is RemoteType.UNKNOWN
+
+
+def test_workable_location_uses_structured_fallback():
+    assert format_workable_location({"locations": [{"city": "Recife", "region": "PE", "country": "Brazil"}]}) == "Recife, PE, Brazil"
+    assert format_workable_location({"country": "Brazil"}) == "Brazil"
+    assert format_workable_location({}) is None
+
+
+def test_workable_collector_deduplicates_repeated_shortcode():
+    payload = _load("workable_jobs.json")
+    duplicate = dict(payload["jobs"][0], city="Brasília")
+    payload["jobs"].append(duplicate)
+    collector = WorkableCollector(CompanySource("Example", "workable", "example"), FakeHTTPClient(payload))
+
+    result = collector.collect()
+
+    assert result.items_found == 3
+    assert [item.job.external_id for item in result.jobs].count("ABC123") == 1
+
+
+@pytest.mark.parametrize("payload", [None, [], {}, {"jobs": {}}, {"jobs": "invalid"}])
+def test_workable_collector_rejects_invalid_payload(payload):
+    collector = WorkableCollector(CompanySource("Example", "workable", "example"), FakeHTTPClient(payload))
+
+    with pytest.raises(CollectorParseError):
+        collector.collect()
+
+
+def test_workable_collector_accepts_empty_public_board_for_lifecycle_guard():
+    collector = WorkableCollector(
+        CompanySource("Example", "workable", "example"),
+        FakeHTTPClient({"name": "Example", "jobs": []}),
+    )
+
+    assert collector.collect().items_found == 0
+
+
+@pytest.mark.parametrize("message", ["timeout", "HTTP 404 for missing tenant", "HTTP 500"])
+def test_workable_collector_wraps_http_failures(message):
+    collector = WorkableCollector(
+        CompanySource("Example", "workable", "missing"),
+        FakeHTTPClient(error=HTTPClientError(message)),
+    )
+
+    with pytest.raises(CollectorHTTPError, match=message):
+        collector.collect()

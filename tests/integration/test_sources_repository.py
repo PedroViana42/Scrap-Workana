@@ -16,9 +16,9 @@ def test_sync_source_catalog_is_idempotent(db_session):
     repository = SourceRepository(db_session)
     all_sources = repository.session.query(repository.get_by_name("greenhouse").__class__).all()
 
-    assert len(first_sync) == 13
-    assert len(second_sync) == 13
-    assert len(all_sources) == 13
+    assert len(first_sync) == 14
+    assert len(second_sync) == 14
+    assert len(all_sources) == 14
     assert repository.get_by_name("workana") is None
 
 
@@ -34,6 +34,6 @@ def test_source_repository_get_by_name_and_list_enabled(db_session):
     assert greenhouse is not None
     assert greenhouse.content_type == ContentType.JOB.value
     assert greenhouse.enabled is True
-    assert {source.name for source in enabled} == {"greenhouse", "lever", "ashby"}
-    assert sum(1 for source in sources if source.content_type == "job") == 9
+    assert {source.name for source in enabled} == {"greenhouse", "lever", "ashby", "workable"}
+    assert sum(1 for source in sources if source.content_type == "job") == 10
     assert sum(1 for source in sources if source.content_type == "deal") == 4

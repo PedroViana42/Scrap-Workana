@@ -1,0 +1,55 @@
+{
+  "name": "Example Company",
+  "description": null,
+  "jobs": [
+    {
+      "id": "workable-id-1",
+      "shortcode": "ABC123",
+      "code": "ENG-1",
+      "title": "Backend Engineer",
+      "description": "<p>Build <strong>Python</strong> APIs.</p>",
+      "url": "https://apply.workable.com/j/ABC123",
+      "application_url": "https://apply.workable.com/j/ABC123/apply",
+      "shortlink": "https://apply.workable.com/j/ABC123",
+      "country": "Brazil",
+      "state": "GO",
+      "city": "Goiânia",
+      "telecommuting": true,
+      "workplace_type": "remote",
+      "employment_type": "Full-time",
+      "experience": "Entry level",
+      "function": "Engineering",
+      "department": "Platform",
+      "published_on": "2026-08-04",
+      "created_at": "2026-08-03",
+      "locations": [{"country": "Brazil", "countryCode": "BR", "city": "Goiânia", "region": "GO"}]
+    },
+    {
+      "shortcode": "HYBRID1",
+      "title": "Data Analyst",
+      "description": "Analyze data.",
+      "url": "https://apply.workable.com/j/HYBRID1",
+      "country": "Brazil",
+      "state": "SP",
+      "city": "São Paulo",
+      "telecommuting": false,
+      "workplace_type": "hybrid",
+      "employment_type": "Internship",
+      "published_on": "2026-08-05"
+    },
+    {
+      "shortcode": "ONSITE1",
+      "title": "Support Analyst",
+      "description": null,
+      "url": "https://apply.workable.com/j/ONSITE1",
+      "country": "Brazil",
+      "state": "GO",
+      "city": "",
+      "telecommuting": false,
+      "workplace_type": "on_site",
+      "employment_type": "",
+      "experience": null,
+      "created_at": "2026-08-06"
+    }
+  ]
+}

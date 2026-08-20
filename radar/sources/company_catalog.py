@@ -2,7 +2,7 @@ from radar.sources.models import CompanySource
 
 
 def get_company_catalog(source_name: str | None = None) -> list[CompanySource]:
-    companies = _greenhouse_companies() + _lever_companies() + _ashby_companies()
+    companies = _greenhouse_companies() + _lever_companies() + _ashby_companies() + _workable_companies()
     if source_name is None:
         return companies
     normalized = source_name.lower().strip()
@@ -87,3 +87,31 @@ def _ashby_companies() -> list[CompanySource]:
         _company("Docker", "ashby", "docker", None, ("remote", "engineering", "devops", "cloud", "platform"), 80),
     ]
 
+
+def _workable_companies() -> list[CompanySource]:
+    return [
+        _company(
+            "Tenchi Security",
+            "workable",
+            "tenchi-security",
+            "BR",
+            ("brazil", "remote", "engineering", "backend", "security", "early-career"),
+            100,
+        ),
+        _company(
+            "GigaBrands",
+            "workable",
+            "gigabrands",
+            None,
+            ("brazil", "latam", "remote", "engineering", "ai"),
+            80,
+        ),
+        _company(
+            "WATI",
+            "workable",
+            "wati-dot-i-o",
+            None,
+            ("brazil", "latam", "remote", "engineering", "backend", "ai"),
+            80,
+        ),
+    ]
