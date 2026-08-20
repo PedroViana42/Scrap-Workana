@@ -1,6 +1,7 @@
 import type { JobSearchParams } from "@/lib/types";
 
 export const filterKeys = [
+  "view",
   "q",
   "source",
   "company",
@@ -19,7 +20,7 @@ export type FilterKey = (typeof filterKeys)[number];
 
 export function normalizeSearchParams(searchParams: Record<string, string | string[] | undefined>): JobSearchParams {
   const normalized: JobSearchParams = {};
-  for (const key of [...filterKeys, "page", "page_size"] as const) {
+  for (const key of [...filterKeys.filter((key) => key !== "view"), "page", "page_size"] as Exclude<FilterKey, "view">[]) {
     const value = searchParams[key];
     if (Array.isArray(value)) {
       normalized[key] = value[0];
@@ -27,6 +28,8 @@ export function normalizeSearchParams(searchParams: Record<string, string | stri
       normalized[key] = value;
     }
   }
+  const rawView = Array.isArray(searchParams.view) ? searchParams.view[0] : searchParams.view;
+  if (rawView === "for-me" || rawView === "brazil" || rawView === "remote" || rawView === "goiania") normalized.view = rawView;
   return normalized;
 }
 
@@ -50,13 +53,14 @@ export function removeFilterHref(path: string, params: JobSearchParams, key: Fil
 export function activeFilters(params: JobSearchParams): Array<{ key: FilterKey; label: string; value: string }> {
   return filterKeys.flatMap((key) => {
     const value = params[key];
-    if (!value || (key === "active" && value === "true")) return [];
+    if (!value || key === "view" || (key === "active" && value === "true")) return [];
     return [{ key, label: filterLabel(key, value), value }];
   });
 }
 
 export function filterLabel(key: FilterKey, value: string): string {
   const labels: Record<FilterKey, string> = {
+    view: "Atalho",
     q: "Busca",
     source: "Fonte",
     company: "Empresa",
@@ -70,6 +74,7 @@ export function filterLabel(key: FilterKey, value: string): string {
     location: "Local",
     technology: "Tecnologia",
   };
+  if (key === "view") return value === "for-me" ? "Para mim" : value === "brazil" ? "Brasil" : value === "remote" ? "Remotas" : "Goiania";
   if (key === "remote") return value === "true" ? "Remoto" : "Nao remoto";
   if (key === "min_score" || key === "max_score") return `${labels[key]} ${value}`;
   return `${labels[key]}: ${value}`;

@@ -26,7 +26,17 @@ export type JobDetail = JobListItem & {
     max: string | number | null;
     currency: string | null;
   };
-  relevance_reasons: Record<string, unknown> | null;
+  relevance_reasons: RelevanceReasons | null;
+};
+
+export type RelevanceReasons = {
+  positive?: string[];
+  negative?: string[];
+  matched_roles?: string[];
+  matched_technologies?: string[];
+  matched_location_signals?: string[];
+  matched_seniority_signals?: string[];
+  [key: string]: unknown;
 };
 
 export type JobsPage = {
@@ -59,6 +69,7 @@ export type StatsResponse = {
 };
 
 export type JobSearchParams = {
+  view?: JobView;
   q?: string;
   source?: string;
   company?: string;
@@ -74,3 +85,5 @@ export type JobSearchParams = {
   page?: string;
   page_size?: string;
 };
+
+export type JobView = "for-me" | "brazil" | "remote" | "goiania";

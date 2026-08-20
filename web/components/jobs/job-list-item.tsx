@@ -1,10 +1,14 @@
 import Link from "next/link";
-import { formatEmploymentType, formatRelativeDate, formatRemoteType } from "@/lib/formatters";
+import { formatEmploymentType, formatRelativeDate } from "@/lib/formatters";
+import { formatJobLocation } from "@/lib/job-location";
 import type { JobListItem as JobListItemType } from "@/lib/types";
 import { ScoreBadge } from "@/components/jobs/score-badge";
 import { TechnologyLabels } from "@/components/jobs/technology-labels";
 
 export function JobListItem({ job }: { job: JobListItemType }) {
+  const location = formatJobLocation(job);
+  const employment = formatEmploymentType(job.employment_type);
+  const published = formatRelativeDate(job.published_at);
   return (
     <article className="grid gap-3 border-b border-[var(--border-muted)] p-4 transition-colors hover:bg-slate-50 md:grid-cols-[1fr_96px] md:items-start">
       <div className="min-w-0">
@@ -15,17 +19,13 @@ export function JobListItem({ job }: { job: JobListItemType }) {
           {job.company ? <span className="text-sm font-medium text-slate-800">{job.company}</span> : null}
         </div>
         <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-sm text-[var(--muted)]">
-          {job.location ? <span>{job.location}</span> : null}
-          <span>{formatRemoteType(job.remote_type)}</span>
-          <span>{formatEmploymentType(job.employment_type)}</span>
+          {location.map((part) => <span key={part}>{part}</span>)}
+          {employment !== "Nao informado" ? <span>{employment}</span> : null}
         </div>
         <div className="mt-2">
           <TechnologyLabels technologies={job.technologies} />
         </div>
-        <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-xs text-[var(--muted)]">
-          <span>{job.source}</span>
-          <span>publicada {formatRelativeDate(job.published_at)}</span>
-        </div>
+        {published !== "N/A" ? <p className="mt-2 text-xs text-[var(--muted)]">Publicada {published}</p> : null}
       </div>
       <div className="flex items-center justify-between md:block">
         <ScoreBadge score={job.relevance_score} band={job.relevance_band} compact />
