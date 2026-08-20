@@ -1,8 +1,9 @@
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
+import requests
 
-from radar.http import HTTPClient, HTTPJSONError, HTTPStatusError
+from radar.http import HTTPClient, HTTPClientError, HTTPJSONError, HTTPStatusError
 
 
 def _response(status_code=200, payload=None, json_error=False):
@@ -48,3 +49,27 @@ def test_http_client_raises_on_invalid_json():
     with pytest.raises(HTTPJSONError):
         client.get_json("https://example.com")
 
+
+def test_http_client_retries_429_and_respects_retry_after():
+    session = Mock()
+    session.headers = {}
+    limited = _response(status_code=429)
+    limited.headers = {"Retry-After": "2"}
+    session.get.side_effect = [limited, _response(payload={"ok": True})]
+    client = HTTPClient(session=session, max_retries=1)
+
+    with patch("radar.http.client.time.sleep") as sleep:
+        assert client.get_json("https://example.com") == {"ok": True}
+
+    sleep.assert_called_once_with(2.0)
+    assert session.get.call_count == 2
+
+
+def test_http_client_wraps_timeout():
+    session = Mock()
+    session.headers = {}
+    session.get.side_effect = requests.Timeout()
+    client = HTTPClient(session=session, max_retries=0)
+
+    with pytest.raises(HTTPClientError, match="HTTP request failed"):
+        client.get_json("https://example.com")

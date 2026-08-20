@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import os
 
 from sqlalchemy.orm import Session
@@ -55,6 +55,8 @@ class JobCollectionService:
             if company_source_db is not None:
                 company_source_id = company_source_db.id
 
+        company_source = self._with_collection_context(company_source, company_source_id)
+
         run = self.scrape_runs.start(
             source.id,
             company_source_id=company_source_id,
@@ -70,7 +72,11 @@ class JobCollectionService:
             items_new = 0
             items_updated = 0
             items_deactivated = 0
-            active_before = self.jobs.count_active_by_company_source(company_source_id) if company_source_id else 0
+            active_before = (
+                self.jobs.count_active_by_company_source(company_source_id)
+                if company_source_id
+                else 0
+            )
             for collected_job in result.jobs:
                 if run.started_at and collected_job.job.collected_at < run.started_at:
                     collected_job.job.collected_at = run.started_at
@@ -86,15 +92,25 @@ class JobCollectionService:
                 else:
                     items_updated += 1
 
-            status, lifecycle_guard = self._classify_result(result.items_found, active_before)
+            complete_snapshot = result.metadata.get("complete_snapshot", True) is True
+            if complete_snapshot:
+                status, lifecycle_guard = self._classify_result(result.items_found, active_before)
+            else:
+                status, lifecycle_guard = ScrapeRunStatus.SUCCESS, None
             metadata = {
                 "company_name": company_source.company_name,
                 "external_identifier": company_source.external_identifier,
+                **result.metadata,
+                "complete_snapshot": complete_snapshot,
             }
             if lifecycle_guard:
                 metadata["lifecycle_guard"] = lifecycle_guard
 
-            if status is ScrapeRunStatus.SUCCESS and company_source_id is not None:
+            if (
+                status is ScrapeRunStatus.SUCCESS
+                and company_source_id is not None
+                and complete_snapshot
+            ):
                 items_deactivated = self._apply_lifecycle(company_source_id)
 
             self.scrape_runs.finish(
@@ -148,7 +164,43 @@ class JobCollectionService:
             raise CollectorError("Collector returned an invalid result")
         return result
 
-    def _classify_result(self, items_found: int, active_before: int) -> tuple[ScrapeRunStatus, str | None]:
+    def _with_collection_context(
+        self,
+        company_source: CompanySource,
+        company_source_id: int | None,
+    ) -> CompanySource:
+        collector_cls = self.registry.get(company_source.source_name)
+        if company_source_id is None or not getattr(
+            collector_cls, "supports_incremental_collection", False
+        ):
+            return company_source
+        successful_runs = self.scrape_runs.list_recent(
+            company_source_id=company_source_id,
+            status=ScrapeRunStatus.SUCCESS,
+            limit=100,
+        )
+        metadata = dict(company_source.metadata)
+        if successful_runs:
+            metadata["_last_successful_collection_at"] = (
+                successful_runs[0].finished_at.isoformat()
+            )
+        last_full = next(
+            (
+                run
+                for run in successful_runs
+                if (run.metadata_ or {}).get("complete_snapshot", True) is True
+            ),
+            None,
+        )
+        if last_full is not None:
+            metadata["_last_full_reconciliation_at"] = last_full.finished_at.isoformat()
+        return replace(company_source, metadata=metadata)
+
+    def _classify_result(
+        self,
+        items_found: int,
+        active_before: int,
+    ) -> tuple[ScrapeRunStatus, str | None]:
         if active_before > 0 and items_found == 0:
             return ScrapeRunStatus.PARTIAL, "SuspiciousEmptyResult"
         min_ratio = float(os.getenv("RADAR_LIFECYCLE_MIN_RESULT_RATIO", "0.20"))
@@ -157,10 +209,21 @@ class JobCollectionService:
         return ScrapeRunStatus.SUCCESS, None
 
     def _apply_lifecycle(self, company_source_id: int) -> int:
-        previous_success = self.scrape_runs.get_last_successful_run(company_source_id)
-        if previous_success is None:
+        previous_full = next(
+            (
+                run
+                for run in self.scrape_runs.list_recent(
+                    company_source_id=company_source_id,
+                    status=ScrapeRunStatus.SUCCESS,
+                    limit=100,
+                )
+                if (run.metadata_ or {}).get("complete_snapshot", True) is True
+            ),
+            None,
+        )
+        if previous_full is None:
             return 0
-        missing_jobs = self.jobs.list_active_missing_since(company_source_id, previous_success.started_at)
+        missing_jobs = self.jobs.list_active_missing_since(company_source_id, previous_full.started_at)
         return self.jobs.deactivate_jobs(missing_jobs)
 
 

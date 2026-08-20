@@ -86,8 +86,16 @@ _SOURCES = [
         name="smartrecruiters",
         display_name="SmartRecruiters",
         content_type=ContentType.JOB,
-        status=SourceStatus.DISABLED,
-        capabilities=SourceCapabilities(supports_company_boards=True),
+        collector="smartrecruiters",
+        base_url="https://api.smartrecruiters.com/v1/companies/{companyIdentifier}/postings",
+        status=SourceStatus.ACTIVE,
+        enabled=True,
+        interval_minutes=60,
+        capabilities=SourceCapabilities(
+            supports_remote=True,
+            supports_published_at=True,
+            supports_company_boards=True,
+        ),
     ),
     SourceConfig(
         name="mercadolivre",

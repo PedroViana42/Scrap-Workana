@@ -1,0 +1,50 @@
+[
+  {
+    "id": "posting-1",
+    "uuid": "uuid-1",
+    "jobId": "job-1",
+    "jobAdId": "ad-1",
+    "name": "Backend Developer Junior",
+    "company": {"name": "Example Brazil", "identifier": "Example"},
+    "department": {"id": "engineering", "label": "Engineering"},
+    "function": {"id": "information_technology", "label": "Information Technology"},
+    "location": {"city": "São Carlos", "region": "SP", "country": "br", "remote": true, "hybrid": false},
+    "typeOfEmployment": {"id": "full_time", "label": "Full-time"},
+    "experienceLevel": {"id": "entry_level", "label": "Entry Level"},
+    "releasedDate": "2026-08-20T12:00:00.000Z",
+    "postingUrl": "https://jobs.smartrecruiters.com/Example/posting-1-backend-developer-junior",
+    "applyUrl": "https://jobs.smartrecruiters.com/Example/posting-1-backend-developer-junior?oga=true",
+    "active": true,
+    "jobAd": {"sections": {
+      "jobDescription": {"title": "Descrição da vaga", "text": "<p>Construa APIs em <strong>Python</strong>.</p>"},
+      "qualifications": {"title": "Qualificações", "text": "<ul><li>0-1 anos de experiência</li></ul>"},
+      "additionalInformation": {"title": "Informações adicionais", "text": "<p>Mentoria disponível.</p>"}
+    }}
+  },
+  {
+    "id": "posting-2",
+    "uuid": "uuid-2",
+    "name": "Data Intern",
+    "company": {"name": "Example Brazil", "identifier": "Example"},
+    "location": {"city": "São Paulo", "region": "SP", "country": "br", "remote": false, "hybrid": true},
+    "typeOfEmployment": {"label": "Intern"},
+    "experienceLevel": {"id": "internship", "label": "Internship"},
+    "releasedDate": "2026-08-19T12:00:00.000Z",
+    "postingUrl": "https://jobs.smartrecruiters.com/Example/posting-2-data-intern",
+    "applyUrl": "https://jobs.smartrecruiters.com/Example/posting-2-data-intern?oga=true",
+    "active": true,
+    "jobAd": {"sections": {"jobDescription": {"text": "SQL e dados."}}}
+  },
+  {
+    "id": "posting-3",
+    "uuid": "uuid-3",
+    "name": "Support Analyst",
+    "company": {"name": "Example Brazil", "identifier": "Example"},
+    "location": {"city": "Goiânia", "region": "GO", "country": "br", "remote": false, "hybrid": false},
+    "experienceLevel": {"id": "not_applicable", "label": "Not Applicable"},
+    "postingUrl": "https://jobs.smartrecruiters.com/Example/posting-3-support-analyst",
+    "applyUrl": "https://jobs.smartrecruiters.com/Example/posting-3-support-analyst?oga=true",
+    "active": true,
+    "jobAd": {"sections": {}}
+  }
+]

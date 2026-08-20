@@ -43,6 +43,12 @@ def test_registry_reports_missing_collector_clearly():
 def test_default_registry_contains_implemented_collectors():
     registry = create_default_registry()
 
-    assert registry.list_available() == ["ashby", "greenhouse", "lever", "workable"]
+    assert registry.list_available() == [
+        "ashby",
+        "greenhouse",
+        "lever",
+        "smartrecruiters",
+        "workable",
+    ]
     assert registry.has("greenhouse") is True
     assert registry.has("remoteok") is False

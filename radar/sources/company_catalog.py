@@ -2,7 +2,13 @@ from radar.sources.models import CompanySource
 
 
 def get_company_catalog(source_name: str | None = None) -> list[CompanySource]:
-    companies = _greenhouse_companies() + _lever_companies() + _ashby_companies() + _workable_companies()
+    companies = (
+        _greenhouse_companies()
+        + _lever_companies()
+        + _ashby_companies()
+        + _workable_companies()
+        + _smartrecruiters_companies()
+    )
     if source_name is None:
         return companies
     normalized = source_name.lower().strip()
@@ -16,6 +22,7 @@ def _company(
     country: str | None,
     tags: tuple[str, ...],
     priority: int,
+    metadata: dict | None = None,
 ) -> CompanySource:
     return CompanySource(
         company_name=company_name,
@@ -24,7 +31,7 @@ def _company(
         enabled=True,
         country=country,
         tags=tags,
-        metadata={"priority": priority},
+        metadata={"priority": priority, **(metadata or {})},
     )
 
 
@@ -113,5 +120,42 @@ def _workable_companies() -> list[CompanySource]:
             None,
             ("brazil", "latam", "remote", "engineering", "backend", "ai"),
             80,
+        ),
+    ]
+
+
+def _smartrecruiters_companies() -> list[CompanySource]:
+    collection = {
+        "country_filter": "br",
+        "reconciliation_interval_hours": 24,
+        "incremental_overlap_minutes": 5,
+    }
+    return [
+        _company(
+            "Experian",
+            "smartrecruiters",
+            "Experian",
+            "BR",
+            ("brazil", "remote", "engineering", "backend", "data", "early-career"),
+            100,
+            collection,
+        ),
+        _company(
+            "Bosch Group",
+            "smartrecruiters",
+            "BoschGroup",
+            "BR",
+            ("brazil", "engineering", "data", "early-career"),
+            80,
+            collection,
+        ),
+        _company(
+            "MSX International",
+            "smartrecruiters",
+            "MSXInternational",
+            "BR",
+            ("brazil", "remote", "engineering", "data"),
+            60,
+            collection,
         ),
     ]

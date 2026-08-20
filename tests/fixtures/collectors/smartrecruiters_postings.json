@@ -1,0 +1,10 @@
+{
+  "totalFound": 3,
+  "limit": 100,
+  "offset": 0,
+  "content": [
+    {"id": "posting-1", "uuid": "uuid-1", "name": "Backend Developer Junior"},
+    {"id": "posting-2", "uuid": "uuid-2", "name": "Data Intern"},
+    {"id": "posting-3", "uuid": "uuid-3", "name": "Support Analyst"}
+  ]
+}
