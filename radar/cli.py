@@ -312,6 +312,19 @@ def discover_local(args: argparse.Namespace) -> int:
     return 0
 
 
+def public_job_postings(args: argparse.Namespace) -> int:
+    from radar.http import HTTPClientError
+    from radar.public_postings.adapter import PublicJobPostingAdapter
+    from radar.public_postings.reporting import print_public_posting_report
+
+    try:
+        report = PublicJobPostingAdapter(args.domain).run(limit=args.limit)
+    except (HTTPClientError, ValueError) as exc:
+        raise SystemExit(str(exc)) from exc
+    print_public_posting_report(report)
+    return 0
+
+
 def rescore_jobs(args: argparse.Namespace) -> int:
     processed = 0
     after_id = 0
@@ -413,6 +426,12 @@ def build_parser() -> argparse.ArgumentParser:
     discovery_parser.add_argument("--max-queries", type=discovery_limit, default=20)
     discovery_parser.add_argument("--results-per-query", type=discovery_limit, default=10)
     discovery_parser.add_argument("--save-results", type=Path)
+    public_postings_parser = subparsers.add_parser(
+        "public-job-postings",
+        help="Read allowlisted public schema.org JobPosting pages without persistence",
+    )
+    public_postings_parser.add_argument("--domain", required=True, choices=["portaldoestagio.com.br"])
+    public_postings_parser.add_argument("--limit", type=discovery_limit, default=20)
     return parser
 
 
@@ -443,6 +462,8 @@ def main() -> int:
         return api_command()
     if args.command == "discover-local":
         return discover_local(args)
+    if args.command == "public-job-postings":
+        return public_job_postings(args)
 
     parser.error(f"Unknown command: {args.command}")
     return 2

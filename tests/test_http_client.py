@@ -11,6 +11,7 @@ def _response(status_code=200, payload=None, json_error=False):
     response.status_code = status_code
     response.url = "https://example.com"
     response.headers = {}
+    response.text = "response text"
     if json_error:
         response.json.side_effect = ValueError("bad json")
     else:
@@ -28,6 +29,25 @@ def test_http_client_sets_user_agent_and_returns_json():
     assert client.get_json("https://example.com") == {"ok": True}
     assert session.headers["User-Agent"] == "RadarTest"
     session.get.assert_called_once()
+
+
+def test_http_client_returns_text():
+    session = Mock()
+    session.headers = {}
+    session.get.return_value = _response()
+    client = HTTPClient(session=session, max_retries=0)
+
+    assert client.get_text("https://example.com") == "response text"
+
+
+def test_http_client_can_disable_redirects():
+    session = Mock()
+    session.headers = {}
+    session.get.return_value = _response()
+    client = HTTPClient(session=session, max_retries=0)
+
+    client.get("https://example.com", allow_redirects=False)
+    assert session.get.call_args.kwargs["allow_redirects"] is False
 
 
 def test_http_client_raises_on_status_error():

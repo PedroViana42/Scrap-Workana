@@ -49,6 +49,20 @@ class HTTPClient:
         response = self._get(url, params=params, headers=headers)
         return self._response_json(response, url)
 
+    def get_text(self, url: str, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> str:
+        response = self.get(url, params=params, headers=headers)
+        return response.text
+
+    def get(
+        self,
+        url: str,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        *,
+        allow_redirects: bool = True,
+    ) -> requests.Response:
+        return self._get(url, params=params, headers=headers, allow_redirects=allow_redirects)
+
     def post_json(
         self,
         url: str,
@@ -72,8 +86,17 @@ class HTTPClient:
     ) -> requests.Response:
         return self._request_with_retry("post", url, payload=payload, headers=headers)
 
-    def _get(self, url: str, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> requests.Response:
-        return self._request_with_retry("get", url, params=params, headers=headers)
+    def _get(
+        self,
+        url: str,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        *,
+        allow_redirects: bool = True,
+    ) -> requests.Response:
+        return self._request_with_retry(
+            "get", url, params=params, headers=headers, allow_redirects=allow_redirects
+        )
 
     def _request_with_retry(
         self,
@@ -83,12 +106,17 @@ class HTTPClient:
         params: dict[str, Any] | None = None,
         payload: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
+        allow_redirects: bool = True,
     ) -> requests.Response:
         last_response: requests.Response | None = None
         for attempt in range(self.max_retries + 1):
             try:
                 request = getattr(self.session, method)
-                kwargs: dict[str, Any] = {"headers": headers, "timeout": self.timeout}
+                kwargs: dict[str, Any] = {
+                    "headers": headers,
+                    "timeout": self.timeout,
+                    "allow_redirects": allow_redirects,
+                }
                 if params is not None:
                     kwargs["params"] = params
                 if payload is not None:

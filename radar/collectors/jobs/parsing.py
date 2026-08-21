@@ -12,24 +12,40 @@ from radar.models.enums import EmploymentType, RemoteType
 
 class _HTMLTextParser(HTMLParser):
     block_tags = {"br", "p", "div", "li", "section", "article", "h1", "h2", "h3", "h4"}
+    ignored_tags = {"script", "style", "iframe", "noscript"}
 
     def __init__(self) -> None:
         super().__init__()
         self.parts: list[str] = []
+        self.ignored_depth = 0
 
     def handle_starttag(self, tag: str, attrs) -> None:
+        if tag.lower() in self.ignored_tags:
+            self.ignored_depth += 1
+            return
+        if self.ignored_depth:
+            return
         if tag.lower() in self.block_tags:
             self.parts.append("\n")
 
     def handle_endtag(self, tag: str) -> None:
+        if tag.lower() in self.ignored_tags:
+            self.ignored_depth = max(0, self.ignored_depth - 1)
+            return
+        if self.ignored_depth:
+            return
         if tag.lower() in self.block_tags:
             self.parts.append("\n")
 
     def handle_data(self, data: str) -> None:
-        self.parts.append(data)
+        if not self.ignored_depth:
+            self.parts.append(data)
 
     def text(self) -> str:
-        raw = unescape("".join(self.parts))
+        # Some public publishers encode entities twice (for example
+        # ``&amp;#8211;``). A second standards-based decode normalizes those
+        # without interpreting or executing markup.
+        raw = unescape(unescape("".join(self.parts)))
         lines = [re.sub(r"\s+", " ", line).strip() for line in raw.splitlines()]
         return "\n".join(line for line in lines if line).strip()
 
@@ -104,4 +120,3 @@ def parse_decimal(value: Any) -> Decimal | None:
 
 def _normalize(value: str) -> str:
     return re.sub(r"\s+", " ", value.strip().lower())
-
