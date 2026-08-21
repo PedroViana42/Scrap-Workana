@@ -78,10 +78,10 @@ export function filterLabel(key: FilterKey, value: string): string {
     location: "Local",
     technology: "Tecnologia",
   };
-  if (key === "view") return value === "for-me" ? "Para mim" : value === "brazil" ? "Brasil" : value === "remote" ? "Remotas" : "Goiania";
+  if (key === "view") return value === "for-me" ? "Recomendadas" : value === "brazil" ? "Brasil" : value === "remote" ? "Remotas" : "Goiania";
   if (key === "remote") return value === "true" ? "Remoto" : "Nao remoto";
   if (key === "attainability") {
-    return `Nivel: ${{ HIGH: "Mais acessivel", MEDIUM: "Stretch", LOW: "Avancada" }[value] ?? value}`;
+    return `Nivel: ${{ HIGH: "Inicio de carreira", MEDIUM: "Intermediario", LOW: "Avancado" }[value] ?? value}`;
   }
   if (key === "min_score" || key === "max_score") return `${labels[key]} ${value}`;
   return `${labels[key]}: ${value}`;

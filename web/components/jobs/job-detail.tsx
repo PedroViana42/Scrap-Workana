@@ -35,7 +35,7 @@ export function JobDetail({ job }: { job: JobDetailType }) {
                 </div>
               </div>
               <a className="inline-flex h-10 shrink-0 items-center justify-center rounded-md bg-[var(--blue)] px-4 text-sm font-semibold text-white" href={job.url} rel="noreferrer" target="_blank">
-                Candidatar-se -&gt;
+                Candidatar-se
               </a>
             </div>
           </header>
@@ -54,7 +54,7 @@ export function JobDetail({ job }: { job: JobDetailType }) {
 
         <aside className="space-y-4 lg:sticky lg:top-20">
           <section className="panel p-4">
-            <h2 className="text-base font-semibold">Relevancia para voce</h2>
+            <h2 className="text-base font-semibold">Compatibilidade</h2>
             <div className="mt-5">
               <ScoreBadge score={job.relevance_score} band={job.relevance_band} />
             </div>

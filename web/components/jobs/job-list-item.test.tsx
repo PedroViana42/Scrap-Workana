@@ -32,7 +32,7 @@ describe("JobListItem", () => {
     expect(screen.getByText("Tempo integral")).toBeInTheDocument();
     expect(screen.getByText("+1")).toBeInTheDocument();
     expect(screen.getByText("96")).toBeInTheDocument();
-    expect(screen.getByText(/Perfil de entrada/)).toBeInTheDocument();
+    expect(screen.getByText("Inicio de carreira")).toBeInTheDocument();
   });
 
   it("omits unavailable placeholders", () => {

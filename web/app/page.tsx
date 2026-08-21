@@ -18,9 +18,8 @@ export default async function HomePage() {
   return (
     <div className="space-y-5">
       <section className="panel hero-panel p-5 md:p-7">
-        <p className="text-sm font-semibold uppercase tracking-wide text-[var(--blue)]">Radar</p>
-        <h1 className="mt-2 text-3xl font-semibold">{grounded.length} oportunidades mais pe no chao</h1>
-        <p className="mt-2 text-sm text-[var(--muted)]">{stretch.length} ainda podem valer uma tentativa · selecionadas por adequacao, compatibilidade e localizacao</p>
+        <h1 className="text-3xl font-semibold">Radar</h1>
+        <p className="mt-2 text-sm text-[var(--muted)]">{grounded.length} oportunidades recomendadas · {stretch.length} oportunidades com experiencia intermediaria</p>
         <div className="mt-5"><JobShortcuts active="for-me" /></div>
       </section>
       <HomeOpportunities grounded={grounded} stretch={stretch} />

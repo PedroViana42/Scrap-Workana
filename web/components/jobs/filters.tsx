@@ -58,7 +58,7 @@ function FilterControls({ params, sources }: { params: JobSearchParams; sources:
         name="attainability"
         label="Nivel da oportunidade"
         value={params.attainability}
-        options={[["", "Nivel da oportunidade"], ["HIGH", "Mais acessivel"], ["MEDIUM", "Stretch"], ["LOW", "Avancada"]]}
+        options={[["", "Todas"], ["HIGH", "Inicio de carreira"], ["MEDIUM", "Intermediario"], ["LOW", "Avancado"]]}
       />
       <Select name="remote" label="Remote" value={params.remote} options={[["", "Remote"], ["true", "Remoto"], ["false", "Nao remoto"]]} />
       <Select
