@@ -23,6 +23,7 @@ class SearchProvider(ABC):
     name: str
     requests_made: int
     estimated_cost_per_request_usd: float | None = None
+    estimated_credits_per_request: int | None = None
 
     @abstractmethod
     def search(

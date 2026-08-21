@@ -18,6 +18,7 @@ class SearchDiscoveryReport:
     filtered_results: int
     resolution: ResolutionReport
     estimated_cost_usd: float | None
+    estimated_credits: int | None
 
 
 def discover_with_provider(
@@ -44,6 +45,8 @@ def discover_with_provider(
     resolution = LocalDiscoveryResolver().resolve_all(rows)
     unit_cost = provider.estimated_cost_per_request_usd
     estimated_cost = provider.requests_made * unit_cost if unit_cost is not None else None
+    unit_credits = provider.estimated_credits_per_request
+    estimated_credits = provider.requests_made * unit_credits if unit_credits is not None else None
     return SearchDiscoveryReport(
         queries_executed=len(queries),
         requests_made=provider.requests_made,
@@ -51,6 +54,7 @@ def discover_with_provider(
         filtered_results=len(rows),
         resolution=resolution,
         estimated_cost_usd=estimated_cost,
+        estimated_credits=estimated_credits,
     )
 
 

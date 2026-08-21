@@ -184,6 +184,8 @@ def test_cli_parser_preserves_input_and_accepts_provider_limits(tmp_path):
     assert automated.provider == "brave"
     assert automated.max_queries == 5
     assert automated.results_per_query == 10
+    tavily = parser.parse_args(["discover-local", "--provider", "tavily"])
+    assert tavily.provider == "tavily"
     with pytest.raises(SystemExit):
         parser.parse_args(["discover-local", "--provider", "brave", "--max-queries", "21"])
     with pytest.raises(SystemExit):

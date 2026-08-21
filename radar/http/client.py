@@ -47,16 +47,53 @@ class HTTPClient:
 
     def get_json(self, url: str, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> Any:
         response = self._get(url, params=params, headers=headers)
+        return self._response_json(response, url)
+
+    def post_json(
+        self,
+        url: str,
+        payload: dict[str, Any],
+        headers: dict[str, str] | None = None,
+    ) -> Any:
+        response = self._post(url, payload=payload, headers=headers)
+        return self._response_json(response, url)
+
+    def _response_json(self, response: requests.Response, url: str) -> Any:
         try:
             return response.json()
         except ValueError as exc:
             raise HTTPJSONError(f"Invalid JSON returned by {url}") from exc
 
+    def _post(
+        self,
+        url: str,
+        payload: dict[str, Any],
+        headers: dict[str, str] | None = None,
+    ) -> requests.Response:
+        return self._request_with_retry("post", url, payload=payload, headers=headers)
+
     def _get(self, url: str, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> requests.Response:
+        return self._request_with_retry("get", url, params=params, headers=headers)
+
+    def _request_with_retry(
+        self,
+        method: str,
+        url: str,
+        *,
+        params: dict[str, Any] | None = None,
+        payload: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> requests.Response:
         last_response: requests.Response | None = None
         for attempt in range(self.max_retries + 1):
             try:
-                response = self.session.get(url, params=params, headers=headers, timeout=self.timeout)
+                request = getattr(self.session, method)
+                kwargs: dict[str, Any] = {"headers": headers, "timeout": self.timeout}
+                if params is not None:
+                    kwargs["params"] = params
+                if payload is not None:
+                    kwargs["json"] = payload
+                response = request(url, **kwargs)
             except requests.RequestException as exc:
                 raise HTTPClientError(f"HTTP request failed for {url}") from exc
 
@@ -79,4 +116,3 @@ class HTTPClient:
             except ValueError:
                 pass
         return self.backoff_seconds * (attempt + 1)
-
