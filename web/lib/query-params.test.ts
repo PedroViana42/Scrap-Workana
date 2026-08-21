@@ -20,6 +20,6 @@ describe("query params", () => {
   });
 
   it("uses a human label for attainability", () => {
-    expect(activeFilters({ attainability: "MEDIUM" })).toEqual([{ key: "attainability", label: "Nivel: Stretch", value: "MEDIUM" }]);
+    expect(activeFilters({ attainability: "MEDIUM" })).toEqual([{ key: "attainability", label: "Nivel: Intermediario", value: "MEDIUM" }]);
   });
 });

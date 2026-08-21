@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { JobView } from "@/lib/types";
 
 const shortcuts: Array<{ view: JobView; label: string }> = [
-  { view: "for-me", label: "Para mim" },
+  { view: "for-me", label: "Recomendadas" },
   { view: "brazil", label: "Brasil" },
   { view: "remote", label: "Remotas" },
   { view: "goiania", label: "Goiania" },

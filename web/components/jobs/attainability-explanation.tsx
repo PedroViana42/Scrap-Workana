@@ -23,16 +23,25 @@ function humanize(signal: string) {
 }
 
 export function AttainabilityExplanation({ attainability }: { attainability: Attainability }) {
-  const evidence = [...attainability.positive, ...attainability.warnings, ...attainability.negative];
+  const compatible = attainability.positive.map(humanize);
+  const requirements = [...attainability.warnings, ...attainability.negative].map(humanize);
   return (
     <div>
-      <h2 className="text-lg font-semibold">Adequacao ao momento</h2>
+      <h2 className="text-lg font-semibold">Compatibilidade de experiencia</h2>
       <div className="mt-3"><AttainabilityBadge level={attainability.level} /></div>
-      {evidence.length ? (
-        <ul className="mt-3 space-y-1 text-sm text-[var(--muted)]">
-          {evidence.map((signal) => <li key={signal}>• {humanize(signal)}</li>)}
-        </ul>
-      ) : null}
+      {compatible.length ? <EvidenceGroup title="Pontos de compatibilidade" items={compatible} /> : null}
+      {requirements.length ? <EvidenceGroup title="Requisitos a considerar" items={requirements} /> : null}
+    </div>
+  );
+}
+
+function EvidenceGroup({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="mt-3">
+      <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+      <ul className="mt-1 space-y-1 text-sm text-[var(--muted)]">
+        {items.map((item) => <li key={item}>• {item}</li>)}
+      </ul>
     </div>
   );
 }

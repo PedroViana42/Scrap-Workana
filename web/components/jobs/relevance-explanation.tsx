@@ -6,8 +6,8 @@ export function RelevanceExplanation({ reasons }: { reasons: RelevanceReasons | 
   if (!positive.length && !attention.length) return null;
   return (
     <section className="grid gap-4 md:grid-cols-2" aria-label="Explicacao da relevancia">
-      {positive.length ? <SignalGroup title="Por que combina" items={positive} symbol="✓" tone="positive" /> : null}
-      {attention.length ? <SignalGroup title="Atencao" items={attention} symbol="!" tone="warning" /> : null}
+      {positive.length ? <SignalGroup title="Pontos de compatibilidade" items={positive} symbol="✓" tone="positive" /> : null}
+      {attention.length ? <SignalGroup title="Requisitos a considerar" items={attention} symbol="!" tone="warning" /> : null}
     </section>
   );
 }

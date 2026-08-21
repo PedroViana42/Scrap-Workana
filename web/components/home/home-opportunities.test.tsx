@@ -11,10 +11,11 @@ const stretch: JobListItem = {
 };
 
 describe("HomeOpportunities", () => {
-  it("keeps Vale tentar visible when there are no HIGH jobs", () => {
+  it("keeps compatible opportunities visible when there are no HIGH jobs", () => {
     render(<HomeOpportunities grounded={[]} stretch={[stretch]} />);
-    expect(screen.getByText(/Nenhuma oportunidade bem alinhada/)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /Vale tentar/ })).toBeInTheDocument();
+    expect(screen.getByText("Nenhuma oportunidade recomendada no momento.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver todas as vagas" })).toHaveAttribute("href", "/jobs");
+    expect(screen.getByRole("heading", { name: "Outras oportunidades compativeis" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Software Engineer" })).toBeInTheDocument();
   });
 });
