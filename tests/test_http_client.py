@@ -65,6 +65,26 @@ def test_http_client_retries_429_and_respects_retry_after():
     assert session.get.call_count == 2
 
 
+def test_http_client_posts_json_and_retries_429_once():
+    session = Mock()
+    session.headers = {}
+    limited = _response(status_code=429)
+    limited.headers = {"Retry-After": "1"}
+    session.post.side_effect = [limited, _response(payload={"results": []})]
+    client = HTTPClient(session=session, max_retries=1)
+
+    with patch("radar.http.client.time.sleep") as sleep:
+        result = client.post_json(
+            "https://api.example/search",
+            payload={"query": "Goiânia"},
+            headers={"Authorization": "Bearer hidden"},
+        )
+
+    assert result == {"results": []}
+    sleep.assert_called_once_with(1.0)
+    assert session.post.call_count == 2
+
+
 def test_http_client_wraps_timeout():
     session = Mock()
     session.headers = {}
