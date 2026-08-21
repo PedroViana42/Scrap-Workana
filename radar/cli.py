@@ -30,6 +30,13 @@ def positive_int(value: str) -> int:
     return parsed
 
 
+def discovery_limit(value: str) -> int:
+    parsed = positive_int(value)
+    if parsed > 20:
+        raise argparse.ArgumentTypeError("must be no greater than 20")
+    return parsed
+
+
 def db_check() -> int:
     with session_scope() as session:
         result = session.execute(text("SELECT 1")).scalar_one()
@@ -261,8 +268,40 @@ def api_command() -> int:
 def discover_local(args: argparse.Namespace) -> int:
     from radar.discovery.reporting import print_report, resolve_file
 
-    report = resolve_file(args.input)
-    print_report(report)
+    if args.input is not None:
+        report = resolve_file(args.input)
+        print_report(report)
+        return 0
+
+    from radar.discovery.queries import LocalDiscoveryQuerySet
+    from radar.discovery.search.base import SearchProviderError
+    from radar.discovery.search.brave import BraveSearchProvider
+    from radar.discovery.search.service import discover_with_provider
+
+    provider = BraveSearchProvider()
+    queries = list(LocalDiscoveryQuerySet().iter_queries())[: args.max_queries]
+    try:
+        search_report = discover_with_provider(
+            provider,
+            queries,
+            results_per_query=args.results_per_query,
+            save_results=args.save_results,
+        )
+    except SearchProviderError as exc:
+        raise SystemExit(str(exc)) from exc
+
+    print_report(search_report.resolution)
+    print("Search provider metrics")
+    print(f"Provider: {provider.name}")
+    print(f"Queries executed: {search_report.queries_executed}")
+    print(f"Requests: {search_report.requests_made}")
+    print(f"Raw results: {search_report.raw_results}")
+    print(f"Results after initial filter: {search_report.filtered_results}")
+    print(f"Unique results: {len(search_report.resolution.unique_candidates)}")
+    if search_report.estimated_cost_usd is not None:
+        print(f"Estimated request cost: USD {search_report.estimated_cost_usd:.4f}")
+    if args.save_results is not None:
+        print(f"Replay saved to: {args.save_results}")
     return 0
 
 
@@ -361,7 +400,12 @@ def build_parser() -> argparse.ArgumentParser:
         "discover-local",
         help="Resolve supplied public discovery results without persistence or network access",
     )
-    discovery_parser.add_argument("--input", required=True, type=Path)
+    discovery_source = discovery_parser.add_mutually_exclusive_group(required=True)
+    discovery_source.add_argument("--input", type=Path)
+    discovery_source.add_argument("--provider", choices=["brave"])
+    discovery_parser.add_argument("--max-queries", type=discovery_limit, default=20)
+    discovery_parser.add_argument("--results-per-query", type=discovery_limit, default=10)
+    discovery_parser.add_argument("--save-results", type=Path)
     return parser
 
 
