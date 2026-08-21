@@ -1,0 +1,14 @@
+[
+  {"discovered_url":"https://www.linkedin.com/jobs/view/101?trk=public_jobs","resolved_url":"https://acme.careers-page.com/jobs/alpha?utm_source=linkedin","observed_title":"Analista de Sistemas","company":"Acme","location":"Goiânia","discovered_via":"linkedin"},
+  {"discovered_url":"https://www.linkedin.com/jobs/view/102","resolved_url":"https://acme.example/carreiras/backend-junior?ref=linkedin","observed_title":"Backend Júnior","company":"Acme","location":"Goiânia","discovered_via":"linkedin"},
+  {"discovered_url":"https://br.indeed.com/viewjob?id=1","resolved_url":"https://empresa.gupy.io/jobs/12345?jobBoardSource=indeed&utm_campaign=jobs","observed_title":"Estágio em TI","company":"Empresa Gupy","location":"Aparecida de Goiânia","discovered_via":"aggregator"},
+  {"discovered_url":"https://empresa.gupy.io/jobs/12345?utm_source=google","observed_title":"Estágio em TI","company":"Empresa Gupy","location":"Aparecida de Goiânia","discovered_via":"google"},
+  {"discovered_url":"https://vagas.solides.com.br/vaga/9876","observed_title":"Suporte TI","company":"Empresa Solides","location":"Goiânia"},
+  {"discovered_url":"https://empresa.rhgestor.com.br/vagas/analista-qa","observed_title":"Analista QA","company":"Empresa RH","location":"Goiânia"},
+  {"discovered_url":"https://empresa.pandape.infojobs.com.br/Detail/4567","observed_title":"Estágio Dados","company":"Empresa IEL","location":"Goiânia"},
+  {"discovered_url":"https://portaldoestagio.com.br/vaga/ti-123","observed_title":"Estágio Desenvolvimento","company":"Empresa Portal","location":"Goiânia"},
+  {"discovered_url":"https://produto.example/jobs/dev-1?utm_medium=social","observed_title":"Desenvolvedor","company":"Produto","location":"Trindade"},
+  {"discovered_url":"https://boards.greenhouse.io/demo/jobs/777?gh_src=abc&utm_source=test","observed_title":"Desenvolvedor","company":"Demo","location":"Goiânia"},
+  {"discovered_url":"https://boards.greenhouse.io/demo/jobs/778","observed_title":"Desenvolvedor","company":"Demo","location":"Goiânia"},
+  {"discovered_url":"https://www.linkedin.com/jobs/view/999","observed_title":"Programador","company":"Empresa","location":"Goianira","discovered_via":"linkedin"}
+]
