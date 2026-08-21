@@ -54,6 +54,8 @@ def _greenhouse_companies() -> list[CompanySource]:
         _company("Elastic", "greenhouse", "elastic", None, ("remote", "engineering", "data", "security", "cloud"), 80),
         _company("Stripe", "greenhouse", "stripe", None, ("engineering", "backend", "data", "security", "platform"), 80),
         _company("Canonical", "greenhouse", "canonical", None, ("remote", "engineering", "devops", "cloud", "platform"), 80),
+        _company("VTEX", "greenhouse", "vtex", "BR", ("brazil", "engineering", "backend", "frontend", "data", "early-career"), 100),
+        _company("RD Station", "greenhouse", "rdstation", "BR", ("brazil", "remote", "engineering", "backend", "data", "devops", "early-career"), 100),
     ]
 
 
@@ -121,6 +123,14 @@ def _workable_companies() -> list[CompanySource]:
             ("brazil", "latam", "remote", "engineering", "backend", "ai"),
             80,
         ),
+        _company(
+            "Dev.Pro",
+            "workable",
+            "devpro",
+            "BR",
+            ("brazil", "remote", "engineering", "backend", "frontend", "cloud", "early-career"),
+            100,
+        ),
     ]
 
 
@@ -156,6 +166,15 @@ def _smartrecruiters_companies() -> list[CompanySource]:
             "BR",
             ("brazil", "remote", "engineering", "data"),
             60,
+            collection,
+        ),
+        _company(
+            "Sigma Software",
+            "smartrecruiters",
+            "SigmaSoftware2",
+            "BR",
+            ("brazil", "remote", "engineering", "backend", "frontend", "data", "cloud", "early-career"),
+            100,
             collection,
         ),
     ]
