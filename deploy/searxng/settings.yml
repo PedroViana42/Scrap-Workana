@@ -1,0 +1,25 @@
+use_default_settings:
+  engines:
+    keep_only:
+      - brave
+      - duckduckgo
+      - startpage
+
+general:
+  instance_name: Radar Local Discovery
+  debug: false
+
+search:
+  safe_search: 1
+  autocomplete: ""
+  default_lang: pt-BR
+  formats:
+    - html
+    - json
+
+server:
+  limiter: false
+  image_proxy: false
+
+ui:
+  default_locale: pt-BR

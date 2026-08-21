@@ -14,6 +14,7 @@ class Settings:
     gemini_key: str | None = os.getenv("GEMINI_KEY")
     brave_search_api_key: str | None = os.getenv("BRAVE_SEARCH_API_KEY")
     tavily_api_key: str | None = os.getenv("TAVILY_API_KEY")
+    searxng_url: str = os.getenv("SEARXNG_URL", "http://searxng:8080")
     database_url: str | None = os.getenv("DATABASE_URL")
     http_timeout_seconds: float = float(os.getenv("RADAR_HTTP_TIMEOUT", "20"))
     http_user_agent: str = os.getenv(

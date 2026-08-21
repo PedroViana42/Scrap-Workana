@@ -6,6 +6,7 @@ x-radar-env: &radar-env
   RADAR_SCHEDULER_BATCH_SIZE: ${RADAR_SCHEDULER_BATCH_SIZE:-5}
   RADAR_LIFECYCLE_MIN_RESULT_RATIO: ${RADAR_LIFECYCLE_MIN_RESULT_RATIO:-0.20}
   RADAR_SCHEDULER_TIMEZONE: ${RADAR_SCHEDULER_TIMEZONE:-UTC}
+  SEARXNG_URL: ${SEARXNG_URL:-http://searxng:8080}
 
 x-runtime-logging: &runtime-logging
   driver: json-file
@@ -14,6 +15,24 @@ x-runtime-logging: &runtime-logging
     max-file: "3"
 
 services:
+  searxng:
+    image: docker.io/searxng/searxng@sha256:374c5da46d26960bf1132834d05bc2ef2ae57232f7a490e4eac8c8b640fa783d
+    restart: unless-stopped
+    environment:
+      SEARXNG_SECRET: ${SEARXNG_SECRET:?SEARXNG_SECRET must be configured}
+    volumes:
+      - ./deploy/searxng/settings.yml:/etc/searxng/settings.yml:ro
+      - radar_searxng_cache:/var/cache/searxng
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging: *runtime-logging
+    mem_limit: 384m
+    cpus: "0.5"
+
   postgres:
     image: postgres:17.6
     restart: unless-stopped
@@ -125,3 +144,4 @@ services:
 
 volumes:
   radar_postgres_data:
+  radar_searxng_cache:

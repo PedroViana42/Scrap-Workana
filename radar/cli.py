@@ -277,11 +277,13 @@ def discover_local(args: argparse.Namespace) -> int:
     from radar.discovery.search.base import SearchProviderError
     from radar.discovery.search.brave import BraveSearchProvider
     from radar.discovery.search.service import discover_with_provider
+    from radar.discovery.search.searxng import SearXNGSearchProvider
     from radar.discovery.search.tavily import TavilySearchProvider
 
     providers = {
         "brave": BraveSearchProvider,
         "tavily": TavilySearchProvider,
+        "searxng": SearXNGSearchProvider,
     }
     provider = providers[args.provider]()
     queries = list(LocalDiscoveryQuerySet().iter_queries())[: args.max_queries]
@@ -307,6 +309,19 @@ def discover_local(args: argparse.Namespace) -> int:
         print(f"Estimated request cost: USD {search_report.estimated_cost_usd:.4f}")
     if search_report.estimated_credits is not None:
         print(f"Estimated credits consumed: {search_report.estimated_credits}")
+    if provider.name == "searxng":
+        print("Results by upstream engine:")
+        if provider.results_by_engine:
+            for engine, count in sorted(provider.results_by_engine.items()):
+                print(f"  {engine}: {count}")
+        else:
+            print("  none")
+        print("Upstream engine errors:")
+        if provider.engine_errors:
+            for error, count in sorted(provider.engine_errors.items()):
+                print(f"  {error}: {count}")
+        else:
+            print("  none")
     if args.save_results is not None:
         print(f"Replay saved to: {args.save_results}")
     return 0
@@ -409,7 +424,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     discovery_source = discovery_parser.add_mutually_exclusive_group(required=True)
     discovery_source.add_argument("--input", type=Path)
-    discovery_source.add_argument("--provider", choices=["tavily", "brave"])
+    discovery_source.add_argument("--provider", choices=["searxng", "tavily", "brave"])
     discovery_parser.add_argument("--max-queries", type=discovery_limit, default=20)
     discovery_parser.add_argument("--results-per-query", type=discovery_limit, default=10)
     discovery_parser.add_argument("--save-results", type=Path)
