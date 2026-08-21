@@ -1,5 +1,6 @@
 import argparse
 import logging
+from pathlib import Path
 
 from sqlalchemy import text
 from radar.database.repositories.sources import SourceRepository, sync_source_catalog
@@ -257,6 +258,14 @@ def api_command() -> int:
     return 0
 
 
+def discover_local(args: argparse.Namespace) -> int:
+    from radar.discovery.reporting import print_report, resolve_file
+
+    report = resolve_file(args.input)
+    print_report(report)
+    return 0
+
+
 def rescore_jobs(args: argparse.Namespace) -> int:
     processed = 0
     after_id = 0
@@ -348,6 +357,11 @@ def build_parser() -> argparse.ArgumentParser:
     scheduler_parser.add_argument("--max-companies", type=int)
     subparsers.add_parser("scheduler-status")
     subparsers.add_parser("api")
+    discovery_parser = subparsers.add_parser(
+        "discover-local",
+        help="Resolve supplied public discovery results without persistence or network access",
+    )
+    discovery_parser.add_argument("--input", required=True, type=Path)
     return parser
 
 
@@ -376,6 +390,8 @@ def main() -> int:
         return scheduler_status()
     if args.command == "api":
         return api_command()
+    if args.command == "discover-local":
+        return discover_local(args)
 
     parser.error(f"Unknown command: {args.command}")
     return 2
