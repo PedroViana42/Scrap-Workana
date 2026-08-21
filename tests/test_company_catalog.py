@@ -48,8 +48,8 @@ def test_company_catalog_distribution_by_ats():
     assert counts["greenhouse"] >= 10
     assert counts["lever"] >= 5
     assert counts["ashby"] >= 10
-    assert counts["workable"] == 3
-    assert counts["smartrecruiters"] == 3
+    assert counts["workable"] == 4
+    assert counts["smartrecruiters"] == 4
 
 
 def test_smartrecruiters_catalog_is_brazil_scoped_and_explicit():
@@ -59,6 +59,7 @@ def test_smartrecruiters_catalog_is_brazil_scoped_and_explicit():
         "Experian",
         "BoschGroup",
         "MSXInternational",
+        "SigmaSoftware2",
     ]
     assert all(company.metadata["country_filter"] == "br" for company in companies)
     assert all(company.metadata["reconciliation_interval_hours"] == 24 for company in companies)
